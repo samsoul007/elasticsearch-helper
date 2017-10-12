@@ -2,7 +2,7 @@
 A nodejs module to do elasticsearch queries easily
 
 # installation
-run `npm install --save elasticsearch-helper`
+`npm install --save elasticsearch-helper`
 
 # usage
 
