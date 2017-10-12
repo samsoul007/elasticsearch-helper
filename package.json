@@ -1,0 +1,28 @@
+{
+  "name": "elasticsearch-helper",
+  "version": "1.0.0",
+  "description": "A nodejs module that simplify elasticsearch querying",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/samsoul007/elasticsearch-helper.git"
+  },
+  "keywords": [
+    "elasticsearch",
+    "helper",
+    "nodejs"
+  ],
+  "author": "Jacques Sirot <jsirot@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/samsoul007/elasticsearch-helper/issues"
+  },
+  "homepage": "https://github.com/samsoul007/elasticsearch-helper#readme",
+  "dependencies": {
+    "bluebird": "^3.5.1",
+    "elasticsearch": "^13.3.1"
+  }
+}
