@@ -1,3 +1,5 @@
+'use strict';
+
 var promise = require("bluebird");
 var ES = require("elasticsearch");
 
