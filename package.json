@@ -1,6 +1,6 @@
 {
   "name": "elasticsearch-helper",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A nodejs module that simplify elasticsearch querying",
   "main": "index.js",
   "scripts": {
