@@ -12,7 +12,7 @@ NOTE: Even if we use this on production level still find bugs and add improvemen
 
 # installation
 
-run `npm install --save elasticsearch-helper`
+`npm install --save elasticsearch-helper`
 
 # usage
 
