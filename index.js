@@ -5,7 +5,7 @@ var ElasticsearchScrollStream = require('elasticsearch-scroll-stream');
 
 var Response = require("./class/response")
 var QueryBuilder = require("./class/query-builder")
-var ConditionBuilder = require("./class/query-builder")
+var ConditionBuilder = require("./class/condition-builder")
 var AggregationBuilder = require("./class/aggregation-builder")
 var SearchType = require("./class/search-type")
 var AggregationType = require("./class/aggregation-type")

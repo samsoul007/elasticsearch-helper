@@ -1,6 +1,6 @@
 'use strict'
 
-var ConditionBuilder = require("./query-builder")
+var ConditionBuilder = require("./condition-builder")
 
 var QueryBuilder = function(){
    this.arroConditions = {};
