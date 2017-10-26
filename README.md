@@ -1,6 +1,11 @@
+
+
+
 # elasticsearch-helper
 
 A nodejs module to do elasticsearch queries easily
+
+<img src="https://static-www.elastic.co/assets/blteb1c97719574938d/logo-elastic-elasticsearch-lt.svg?q=294" width="200" />
 
 # disclaimer
 
