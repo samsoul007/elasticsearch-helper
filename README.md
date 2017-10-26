@@ -1,7 +1,12 @@
 
 
 
-# elasticsearch-helper
+# elasticsearch-helper [![npm version](https://badge.fury.io/js/elasticsearch-helper.svg)](https://badge.fury.io/js/elasticsearch-helper)
+
+[npm-image]: https://img.shields.io/npm/v/aerospike.svg
+[npm-url]: https://www.npmjs.com/package/aerospike
+[downloads-image]: https://img.shields.io/npm/dm/aerospike.svg
+[downloads-url]: http://npm-stat.com/charts.html?package=aerospike
 
 A nodejs module to do elasticsearch queries easily
 
