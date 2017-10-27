@@ -16,7 +16,7 @@
     "nodejs"
   ],
   "author": "Jacques Sirot <jsirot@gmail.com>",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/samsoul007/elasticsearch-helper/issues"
   },

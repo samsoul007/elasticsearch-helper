@@ -14,11 +14,13 @@ A nodejs module to do elasticsearch queries easily
 
 # disclaimer
 
-I experienced a lot of issues in the past due to the way Elasticsearch handles the queries. I decided to create helper that we currently use on production level at https://headhunterportal.com and some other projects and so far it had helped us to drastically reduce the complexity of readability of our code.
+I experienced a lot of issues in the past due to the way Elasticsearch handles the queries. I decided to create this helper which we currently use on production level at https://headhunterportal.com and some other projects and so far it had helped us to drastically reduce the complexity of readability of our code.
 
 With this helper you will be able to query your elasticsearch clusters very easily. Everything is chainable and the query always returns a promise.
 
-NOTE: Even if we use this on production level still find bugs and add improvements to the module codebase. Feel free to for it and modify it for your own needs.
+
+
+NOTE: Even if we use this on production level, we still find bugs and add improvements to the module codebase. Feel free to fork it and modify it for your own needs.
 
 # installation
 
@@ -78,7 +80,7 @@ var q = esH.query("Index1","Type1");
 
 ```javascript
 q.id("ID")
-q.run()
+ .run()
   .then(function(hit){
   // return hit object or false if not found
   console.log(hit.id()) // get Document ID
@@ -92,7 +94,7 @@ q.run()
 
 ```javascript
 q.id("ID")
-q.delete()
+ .delete()
   .then(function(hit){
   // return true
 })
@@ -102,8 +104,8 @@ q.delete()
 
 ```javascript
 q.id("ID")
-q.body({...}) // Data object to store
-q.run()
+ .body({...}) // Data object to store
+ .run()
   .then(function(hit){
   // return the data object
 })
@@ -113,8 +115,8 @@ q.run()
 
 ```javascript
 q.id("ID")
-q.update({...}) // Data object to update
-q.run()
+ .update({...}) // Data object to update
+ .run()
   .then(function(hit){
   // return the data object
 })
@@ -132,35 +134,73 @@ GETs and DELETEs are using the same methodology for querying building. Example:
 q.must(
   // Term type
   esH.type.term("fieldname","fieldvalue"),
-  // Terms type
-  esH.type.terms("fieldname","fieldvalues"),
-  // Exists Type
-  esH.type.exists("fieldname"),
-  // Range Type
-  esH.type.range({
-    gte:1,
-    lte:10
-  }),
   // Add a sub filter in the query
   esH.filter.should(
     esH.type.terms("fieldname2","fieldvalues")
   )
 )
+```
+##### Filter types
+* must
 
-// Other query methods include
-// It is not possible to do nested booleans
+```javascript
+  esH.filter.must(/* search types as arguments */);
+```
+* must_not
 
-q.must_not(
-  // Types
-)
+```javascript
+  esH.filter.must_not(/* search types as arguments */);
+```
+* should
 
-q.should(
-  // Types
-)
+```javascript
+  esH.filter.should(/* search types as arguments */);
+```
+* filter
 
-q.filter(
-  // Types
-)
+```javascript
+  esH.filter.filter(/* search types as arguments */);
+```
+
+##### Search types
+
+NOTE: not all types are currently implemented. Others will be added over time.
+
+* term
+
+```javascript
+  esH.type.term("fieldkey","fieldvalue");
+  // ex:
+  esH.type.term("name.first_name","josh");
+```
+* terms
+
+```javascript
+  esH.type.terms("fieldkey","fieldvalues as array");
+  // ex:
+  esH.type.terms("name.first_name",["josh","alan","jack"]);
+```
+* exists
+
+```javascript
+  esH.type.exists("fieldkey");
+  // ex:
+  esH.type.exists("name.first_name",["josh","alan","jack"]);
+```
+* range
+
+```javascript
+  esH.type.range("fieldkey","range object options");
+  // ex:
+  esH.type.range("age",{
+    gte: 10,
+    lte: 30
+  });
+```
+
+NOTE: You can still use the old way of adding a type:
+```javascript
+  esH.addType().term("fieldkey","fieldvalue");
 ```
 
 #### Retrieve
@@ -190,11 +230,11 @@ q.must(
 })
 ```
 
-#### aggregations // BETA
+#### aggregations [BETA]
 
 Elasticsearch has a very powerful aggregation system but the way to handle it can be tricky. I tried to solve this issue by wrapping it in what I think is the simplest way.
 
-NOTE: Right now I only handle 2 types of aggregation, `terms` and `date_histogram`
+NOTE: Right now I only handle 2 types of aggregation, `terms` and `date_histogram`, others will be added over time.
 
 ```javascript
 q.aggs(
@@ -226,6 +266,20 @@ q.aggs(
   }
 
 })
+```
+
+##### Aggregation types
+
+* terms
+
+```javascript
+ES.agg.terms("aggregation name")("field to aggregate on")
+```
+* date_histogram
+
+interval: string using a [time unit](https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units)
+```javascript
+ES.agg.date_histogram("aggregation name")("field to aggregate on","interval")
 ```
 
 #### Other options
