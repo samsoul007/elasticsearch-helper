@@ -8,7 +8,7 @@
 [downloads-image]: https://img.shields.io/npm/dm/aerospike.svg
 [downloads-url]: http://npm-stat.com/charts.html?package=aerospike
 
-A nodejs module to do elasticsearch queries easily
+A Nodejs module facilitating querying Elasticsearch clusters.
 
 <img src="https://static-www.elastic.co/assets/blteb1c97719574938d/logo-elastic-elasticsearch-lt.svg?q=294" width="200" />
 
@@ -280,6 +280,50 @@ ES.agg.terms("aggregation name")("field to aggregate on")
 interval: string using a [time unit](https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units)
 ```javascript
 ES.agg.date_histogram("aggregation name")("field to aggregate on","interval")
+```
+
+* average
+
+```javascript
+ES.agg.average("aggregation name")("field to aggregate on")
+```
+
+NOTE: Aggregations below do not support sub aggregations. Error will be thrown.
+
+* cardinality
+
+```javascript
+ES.agg.cardinality("aggregation name")("field to aggregate on")
+```
+
+* extended_stats
+
+```javascript
+ES.agg.extended_stats("aggregation name")("field to aggregate on")
+```
+
+* maximum
+
+```javascript
+ES.agg.maximum("aggregation name")("field to aggregate on")
+```
+
+* minimum
+
+```javascript
+ES.agg.minimum("aggregation name")("field to aggregate on")
+```
+
+* sum
+
+```javascript
+ES.agg.sum("aggregation name")("field to aggregate on")
+```
+
+* value_count
+
+```javascript
+ES.agg.value_count("aggregation name")("field to aggregate on")
 ```
 
 #### Other options

@@ -5,6 +5,7 @@ var AggregationBuilder = require("./aggregation-builder")
 var AggregationType = function(p_sName){
   this.sName = p_sName;
   this.sType = false;
+  this.acceptSubAgg = true;
   this.oOptions = {};
   this.oAB = new AggregationBuilder();
 }
@@ -16,6 +17,78 @@ AggregationType.prototype = {
   getType: function(){
     return this.sType;
   },
+
+  average: function(p_sKey){
+      this.sType = "avg";
+      this.acceptSubAgg = false;
+
+      this.oOptions = {
+        "field" : p_sKey
+      }
+
+      return this;
+  },
+  cardinality: function(p_sKey){
+      this.sType = "cardinality";
+      this.acceptSubAgg = false;
+
+      this.oOptions = {
+        "field" : p_sKey
+      }
+
+      return this;
+  },
+  extended_stats: function(p_sKey){
+      this.sType = "extended_stats";
+      this.acceptSubAgg = false;
+
+      this.oOptions = {
+        "field" : p_sKey
+      }
+
+      return this;
+  },
+  maximum: function(p_sKey){
+      this.sType = "max";
+      this.acceptSubAgg = false;
+
+      this.oOptions = {
+        "field" : p_sKey
+      }
+
+      return this;
+  },
+  minimum: function(p_sKey){
+      this.sType = "min";
+      this.acceptSubAgg = false;
+
+      this.oOptions = {
+        "field" : p_sKey
+      }
+
+      return this;
+  },
+  sum: function(p_sKey){
+      this.sType = "sum";
+      this.acceptSubAgg = false;
+
+      this.oOptions = {
+        "field" : p_sKey
+      }
+
+      return this;
+  },
+  value_count: function(p_sKey){
+      this.sType = "value_count";
+      this.acceptSubAgg = false;
+
+      this.oOptions = {
+        "field" : p_sKey
+      }
+
+      return this;
+  },
+
   terms : function(p_sKey){
     this.sType = "terms";
 
@@ -38,6 +111,9 @@ AggregationType.prototype = {
   aggs: function(){
     if(!arguments.length)
       return this.oAB;
+
+    if(this.acceptSubAgg == false)
+      throw this.sType+" does not support sub-aggregations"
 
     this.oAB.add.apply(this.oAB,arguments)
     return this;

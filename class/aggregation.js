@@ -28,6 +28,23 @@ Aggregation.prototype = {
         })
       })
       break;
+      case "avg":
+      case "cardinality":
+      case "max":
+      case "min":
+      case "sum":
+      case "value_count":
+      return new Hit({
+        _id: "",
+        _source : this.oAggregation.value
+      })
+      break;
+      case "extended_stats":
+      return new Hit({
+        _id: "",
+        _source : this.oAggregation
+      })
+      break;
     }
   },
   agg: function(p_sName){

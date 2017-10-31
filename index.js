@@ -304,6 +304,9 @@ module.exports = {
   Query : function(p_sIndex,p_sType){
     return new Elasticsearch(p_sIndex,p_sType)
   },
+  query : function(p_sIndex,p_sType){
+    return new Elasticsearch(p_sIndex,p_sType)
+  },
   addType: function(){
     return new SearchType();
   },
@@ -347,6 +350,48 @@ module.exports = {
     }
   },
   agg:{
+    average:  function(p_sName){
+      return function(){
+        var oST = new AggregationType(p_sName);
+        return oST.average.apply(oST,arguments);
+      }
+    },
+    cardinality: function(p_sName){
+      return function(){
+        var oST = new AggregationType(p_sName);
+        return oST.cardinality.apply(oST,arguments);
+      }
+    },
+    extended_stats: function(p_sName){
+      return function(){
+        var oST = new AggregationType(p_sName);
+        return oST.extended_stats.apply(oST,arguments);
+      }
+    },
+    maximum: function(p_sName){
+      return function(){
+        var oST = new AggregationType(p_sName);
+        return oST.maximum.apply(oST,arguments);
+      }
+    },
+    minimum: function(p_sName){
+      return function(){
+        var oST = new AggregationType(p_sName);
+        return oST.minimum.apply(oST,arguments);
+      }
+    },
+    sum: function(p_sName){
+      return function(){
+        var oST = new AggregationType(p_sName);
+        return oST.sum.apply(oST,arguments);
+      }
+    },
+    value_count: function(p_sName){
+      return function(){
+        var oST = new AggregationType(p_sName);
+        return oST.value_count.apply(oST,arguments);
+      }
+    },
     terms: function(p_sName){
       return function(){
         var oST = new AggregationType(p_sName);
