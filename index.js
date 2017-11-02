@@ -220,11 +220,12 @@ Elasticsearch.prototype = {
 
 
 
-        //if size is more than 500 we do an automatic scroll
-        if(self.oQuery.size && self.oQuery.size > 500 && !self.oAB.count()){
+        //if size is more than 5000 we do an automatic scroll
+        if(self.oQuery.size && self.oQuery.size > 5000 && !self.oAB.count()){
           var arroData = [];
 
           oQuery.scroll = "1m";
+          oQuery.size = 5000;
 
           var es_stream = new ElasticsearchScrollStream(self.oESClient, oQuery, ['_id', '_index','_type']);
 
