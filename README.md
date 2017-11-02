@@ -50,8 +50,6 @@ The client is chainable which means that you can call functions one after the ot
 Initialise a query:
 
 ```javascript
-const esH = require("elasticsearch-helper")
-
 // Querying on index "Index1"
 esH.query("Index1");
 

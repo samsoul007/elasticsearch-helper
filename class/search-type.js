@@ -31,7 +31,7 @@ SearchType.prototype = {
     if(p_arrsValue.constructor !== Array)
       throw "needs to be an array";
 
-    this._setValues("terms",p_sKey,p_sValue)
+    this._setValues("terms",p_sKey,p_arrsValue)
     return this;
   },
   render: function(){
