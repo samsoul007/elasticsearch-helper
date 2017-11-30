@@ -78,7 +78,7 @@ var Elasticsearch = function(p_sIndex, p_sType) {
   this.sType = p_sType;
   this.sID = false;
 
-  this.size = false;
+  this.sizeResult = false;
   this.arrsFields = [];
   this.oBody = false;
   this.oDoc = false;
@@ -170,7 +170,7 @@ Elasticsearch.prototype = {
             query: self.oQB.render()
           };
 
-          oQuery.body.size = self.size || 10;
+          oQuery.body.size = self.sizeResult || 10;
           oQuery.body._source = self.arrsFields;
         }
 
@@ -207,8 +207,8 @@ Elasticsearch.prototype = {
     if (this._hasAggregation())
       throw "You cannot copy while doing aggregation";
 
-    if (!this.size) {
-      this.size = 50000000;
+    if (!this.sizeResult) {
+      this.sizeResult = 50000000;
     }
 
     return this.run().then(function(arroHit) {
@@ -252,7 +252,7 @@ Elasticsearch.prototype = {
     return this;
   },
   size: function(p_iSize) {
-    this.size = p_iSize;
+    this.sizeResult = p_iSize;
     return this;
   },
   fields: function(p_arroFields) {
