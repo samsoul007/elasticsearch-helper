@@ -14,7 +14,7 @@ A Nodejs module facilitating querying Elasticsearch clusters.
 
 # disclaimer
 
-I experienced a lot of issues in the past due to the way Elasticsearch handles the queries. I decided to create this helper which we currently use on production level at https://headhunterportal.com and some other projects and so far it had helped us to drastically reduce the complexity of readability of our code.
+I experienced a lot of issues in the past due to the way Elasticsearch handles the queries. I decided to create this helper which we currently use on production level at https://headhunterportal.com and some other projects and had helped us to drastically improve the readability of our code.
 
 With this helper you will be able to query your elasticsearch clusters very easily. Everything is chainable and the query always returns a promise.
 
@@ -22,28 +22,33 @@ With this helper you will be able to query your elasticsearch clusters very easi
 
 NOTE: Even if we use this on production level, we still find bugs and add improvements to the module codebase. Feel free to fork it and modify it for your own needs.
 
+If you like this package don't hesitate to drop a :star: :smile:
+
 # installation
 
 `npm install --save elasticsearch-helper`
 
 # usage
 
-## add client
+## Add client
 
 ```javascript
 let esH = require("elasticsearch-helper")
 
 // Will create a default client
-esH.AddClient("127.0.0.1:9200");
+esH.addClient("127.0.0.1:9200");
 
 // Will create a client with name "client1"
-esH.AddClient("client1","127.0.0.1:9200");
+esH.addClient("client1","127.0.0.1:9200");
 
 // Will create a client with name "client1" and will be used as default
-esH.AddClient("client1","127.0.0.1:9200",true);
+esH.addClient("client1","127.0.0.1:9200",true);
+
+// Alias:
+esH.AddClient(...)
 ```
 
-## use client
+## Use client
 
 The client is chainable which means that you can call functions one after the other until you execute the query. The query is then returning a promise.
 
@@ -63,6 +68,87 @@ esH.query("Index1","Type1");
 esH.query("Index1","Type1)".use("Client1")
 ```
 
+## Indexes
+
+We implemented some helpers based on what we were using a lot.
+
+New ones will be added over time.
+
+NOTE: All those methods return a promise.
+
+### copyTo
+
+Easily copy an index/type to another client/index/type using bulk inserts.
+
+NOTE1: you can copy based on a query, check below to see how to do queries.
+
+NOTE2: If you want to copy millions of rows remember to set `size()`
+, Elasticsearch-helper will create a scroll.
+
+
+```javascript
+
+//Copy from index1 to index2
+esH.query("Index1")
+.copyTo(esH.query("Index2"));
+
+//Copy from index1 to index2 on client2
+esH.query("Index1")
+.copyTo(esH.query("Index2").use("client2"));
+
+//Copy from index1, type1 to index2, type1
+esH.query("Index1","Type1")
+.copyTo(esH.query("Index2"));
+
+//Copy from index1, type1 to index2, type2
+esH.query("Index1","Type1")
+.copyTo(esH.query("Index2","Type2"));
+
+//Copy documents with first name is Josh from index1 to index2
+esH.query("Index1")
+.must(
+  esH.type.term("first_name","Josh"),
+)
+.copyTo(esH.query("Index2"));
+```
+
+### deleteIndex
+
+Delete an index
+
+WARNING: This operation is final and cannot be reverted unless you have a snapshot, use at you own risk.
+
+NOTE: For security reason you cannot delete multiple indexes at the same time.
+
+```javascript
+
+//Delete index1
+esH.query("Index1")
+.deleteIndex();
+
+//Delete index1 from client2
+esH.query("Index1")
+.use("client2")
+.deleteIndex();
+```
+
+### exists
+
+Check if an index exists.
+
+```javascript
+
+esH.query("Index1")
+.exists();
+
+esH.query("Index1")
+.use("client2")
+.exists();
+```
+
+
+## Documents
+
 Doing query:
 
 For those example we will use the query variable 'q':
@@ -81,10 +167,10 @@ q.id("ID")
  .run()
   .then(function(hit){
   // return hit object or false if not found
-  console.log(hit.id()) // get Document ID
-  console.log(hit.index()) // get Document index
-  console.log(hit.type()) // get Document type
-  console.log(hit.data()) // get Document source
+  console.log(hit.id())     // get Document ID
+  console.log(hit.index())  // get Document index
+  console.log(hit.type())   // get Document type
+  console.log(hit.data())   // get Document source
 })
 ```
 
@@ -183,7 +269,7 @@ NOTE: not all types are currently implemented. Others will be added over time.
 ```javascript
   esH.type.exists("fieldkey");
   // ex:
-  esH.type.exists("name.first_name",["josh","alan","jack"]);
+  esH.type.exists("name.first_name");
 ```
 * range
 
@@ -225,6 +311,18 @@ q.must(
   // Types
 ).delete().then(function(hits){
   // return array of hits objects
+})
+```
+
+#### Count
+
+Count the documents
+
+```javascript
+q.must(
+  // Types
+).count().then(function(count){
+  // return count of documents
 })
 ```
 
@@ -271,7 +369,7 @@ q.aggs(
 * terms
 
 ```javascript
-ES.agg.terms("aggregation name")("field to aggregate on")
+ES.agg.terms("aggregation name")("field to aggregate on"[,"options object"])
 ```
 * date_histogram
 
@@ -333,7 +431,11 @@ ES.agg.value_count("aggregation name")("field to aggregate on")
 q.size(1000)
 
 // will retrieve the documents values for specific keys
-q.fields("name","id")
+q.fields(["name","id"])
+
+// will change/retrieve the type
+q.type("type1")
+
 ```
 
 ## Examples

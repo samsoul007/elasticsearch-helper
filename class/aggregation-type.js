@@ -89,11 +89,15 @@ AggregationType.prototype = {
       return this;
   },
 
-  terms : function(p_sKey){
+  terms : function(p_sKey,p_oOptions){
     this.sType = "terms";
 
     this.oOptions = {
       "field" : p_sKey
+    }
+
+    if(p_oOptions){
+      for (var attrname in p_oOptions) { this.oOptions[attrname] = p_oOptions[attrname]; }
     }
 
     return this;
