@@ -112,7 +112,6 @@ Elasticsearch.prototype = {
       var sType = "search";
       var oQuery = {
         index: self.sIndex,
-        body: {}
       }
 
       if (self.sType)
