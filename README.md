@@ -3,11 +3,6 @@
 
 # elasticsearch-helper [![npm version](https://badge.fury.io/js/elasticsearch-helper.svg)](https://badge.fury.io/js/elasticsearch-helper) [![NSP Status](https://nodesecurity.io/orgs/jacques-sirot/projects/60dd35a8-0efd-415e-9f72-2e7300f888ef/badge)](https://nodesecurity.io/orgs/jacques-sirot/projects/60dd35a8-0efd-415e-9f72-2e7300f888ef)
 
-[npm-image]: https://img.shields.io/npm/v/aerospike.svg
-[npm-url]: https://www.npmjs.com/package/aerospike
-[downloads-image]: https://img.shields.io/npm/dm/aerospike.svg
-[downloads-url]: http://npm-stat.com/charts.html?package=aerospike
-
 A Nodejs module facilitating querying Elasticsearch clusters.
 
 <img src="https://static-www.elastic.co/assets/blteb1c97719574938d/logo-elastic-elasticsearch-lt.svg?q=294" width="200" />

@@ -157,6 +157,9 @@ Elasticsearch.prototype = {
 
           sType = "update";
         } else if (self.bCount) {
+          oQuery.body = {
+            query: self.oQB.render()
+          };
           sType = "count";
         } else if (self.oBody) {
           if (!self.sID)
@@ -310,7 +313,7 @@ Elasticsearch.prototype = {
       })
     })
   },
-  run: function() {
+  run: function(p_bLog) {
     var self = this;
 
     this.oESClient = this._getClient();
@@ -321,6 +324,9 @@ Elasticsearch.prototype = {
 
     return this._generateQuery()
       .then(function(oQueryData) {
+        if(p_bLog)
+          console.log(JSON.stringify(oQueryData, null, 2));
+
         var oQuery = oQueryData.query;
         var sType = oQueryData.type;
         return new Promise(function(resolve, reject) {
