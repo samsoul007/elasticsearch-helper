@@ -34,6 +34,15 @@ SearchType.prototype = {
     this._setValues("terms",p_sKey,p_arrsValue)
     return this;
   },
+  wildcard: function(p_sKey,p_sValue){
+    this._setValues("wildcard",p_sKey,p_sValue)
+    return this;
+  },
+  prefix: function(p_sKey,p_sValue){
+    this._setValues("prefix",p_sKey,p_sValue)
+    return this;
+  },
+
   render: function(){
     var oObj = {}
     oObj[this.sType] = {};

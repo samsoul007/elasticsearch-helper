@@ -9,7 +9,7 @@ var ConditionBuilder = require("./class/condition-builder")
 var AggregationBuilder = require("./class/aggregation-builder")
 var SearchType = require("./class/search-type")
 var AggregationType = require("./class/aggregation-type")
-
+var _ = require("lodash");
 // var oESClient = false;
 var oESClientList = {};
 
@@ -23,7 +23,7 @@ var sDefaultName = "default";
  * @param {Boolean} Default - set this client as default for queries
  * @return {Void}
  *
- * @method AddClient with 1 arguments
+ * @method AddClient with 1 argument
  * @param {String} Host - host (ex: '127.0.0.1:9200')
  * @return {Void}
  */
@@ -70,6 +70,16 @@ var getClient = function() {
   }
 }
 
+var onErrorMethod = function(err){
+  return err;
+};
+
+var promiseSerie = function(arroPromises) {
+  var p = Promise.resolve();
+  return arroPromises.reduce(function(pacc, fn) {
+    return pacc = pacc.then(fn);
+  }, p);
+}
 
 var Elasticsearch = function(p_sIndex, p_sType) {
   this.oESClient = false;
@@ -83,9 +93,14 @@ var Elasticsearch = function(p_sIndex, p_sType) {
   this.oBody = false;
   this.oDoc = false;
   this.bDelete = false;
+  this.bEmptyIndex = false;
   this.bCount = false;
   this.bHasCondition = false;
   this.arroBulk = [];
+  this.onErrorMethod = onErrorMethod;
+
+  this.onPagination = false;
+  this.iPageSize = 250;
 
   this.oQB = new QueryBuilder();
   this.oAB = new AggregationBuilder();
@@ -97,6 +112,15 @@ Elasticsearch.prototype = {
       return this.sType
 
     this.sType = arguments[0];
+    return this;
+  },
+  onError : function(p_fFunction){
+    this.onErrorMethod = p_fFunction;
+    return this;
+  },
+  onPagination: function(p_fFuntion,p_iSize){
+    this.onPagination = p_fFuntion;
+    this.iPageSize = p_iSize || this.iPageSize;
     return this;
   },
   _hasAggregation: function() {
@@ -147,7 +171,15 @@ Elasticsearch.prototype = {
 
             sType = "deleteByQuery";
           }
-        } else if (self.oDoc) {
+        }else if(self.bEmptyIndex) {
+          oQuery.body = {
+            query: {
+              "match_all":{}
+            }
+          };
+
+          sType = "deleteByQuery";
+        }else if (self.oDoc) {
           if (!self.sID)
             return reject("You need to set an id to update")
 
@@ -205,6 +237,38 @@ Elasticsearch.prototype = {
     this.oQB.must_not.apply(this.oQB, arguments)
     return this;
   },
+  deleteIndex: function() {
+    if (this.sIndex.indexOf('*') !== -1 ||  this.sIndex.split(",").length > 1)
+      throw "For security reasons you cannot delete multiple indexes";
+
+
+    var self = this;
+    return new Promise(function(resolve, reject) {
+      self._getClient().indices.delete({
+        index: self.sIndex
+      }, function(err, response) {
+        if (err) return reject(err);
+
+        resolve(response.acknowledged)
+      })
+    })
+  },
+  empty: function(){
+    this.bEmptyIndex = true;
+    return this.run();
+  },
+  exists: function() {
+    var self = this;
+    return new Promise(function(resolve, reject) {
+      self._getClient().indices.exists({
+        index: self.sIndex
+      }, function(err, response) {
+        if (err) return reject(err);
+
+        resolve(response)
+      })
+    })
+  },
   copyTo: function(oQueryObj) {
     if (this._hasAggregation())
       throw "You cannot copy while doing aggregation";
@@ -213,7 +277,8 @@ Elasticsearch.prototype = {
       this.sizeResult = 50000000;
     }
 
-    return this.run().then(function(arroHit) {
+    return this.run()
+    .then(function(arroHit) {
       for (var i = 0; i < arroHit.length; i++) {
         var oHit = arroHit[i];
         oQueryObj.bulk(oHit.data(), oHit.id(), oHit.type())
@@ -227,7 +292,7 @@ Elasticsearch.prototype = {
       throw "You need to set a type when you create a query or when you call the bulk() method to copy";
 
     if (!this.sID && !p_sId)
-      throw "You need to set a id either when you define a query with id() or when calling the bulk() method";
+      throw "You need to set an id either when you define a query with id() or when calling the bulk() method";
 
     this.arroBulk.push({
       "index": {
@@ -285,34 +350,6 @@ Elasticsearch.prototype = {
     this.bCount = true;
     return this.run();
   },
-  deleteIndex: function() {
-    if (this.sIndex.indexOf('*') !== -1 ||  this.sIndex.split(",").length > 1)
-      throw "For security reasons you cannot delete multiple indexes";
-
-
-    var self = this;
-    return new Promise(function(resolve, reject) {
-      self._getClient().indices.delete({
-        index: self.sIndex
-      }, function(err, response) {
-        if (err) return reject(err);
-
-        resolve(response.acknowledged)
-      })
-    })
-  },
-  exists: function() {
-    var self = this;
-    return new Promise(function(resolve, reject) {
-      self._getClient().indices.exists({
-        index: self.sIndex
-      }, function(err, response) {
-        if (err) return reject(err);
-
-        resolve(response)
-      })
-    })
-  },
   run: function(p_bLog) {
     var self = this;
 
@@ -329,6 +366,30 @@ Elasticsearch.prototype = {
 
         var oQuery = oQueryData.query;
         var sType = oQueryData.type;
+
+        if(sType == "bulk"){
+          var arroDataBulk = _.chunk(self.arroBulk, 500);
+
+          var arroPromises = [];
+          for(var i = 0 ; i < arroDataBulk.length; i++){
+            arroPromises.push((function(arroBulk){
+              return function(){
+                return new Promise(function(resolve,reject){
+                  self.oESClient.bulk({
+                    body: arroBulk
+                  }, function(err, response) {
+                    if(err)
+                      return reject(err)
+
+                    resolve(true);
+                  });
+                })
+              }
+            })(arroDataBulk[i]))
+          }
+          return promiseSerie(arroPromises);
+        }
+
         return new Promise(function(resolve, reject) {
 
           //if size is more than 5000 we do an automatic scroll
@@ -373,7 +434,8 @@ Elasticsearch.prototype = {
             es_stream.on('error', function(err) {
               reject(err);
             });
-          } else {
+          }
+          else {
             self.oESClient[sType](oQuery, function(err, response) {
               if (err) {
                 if (sType == "get" && err.status == 404) {
@@ -395,23 +457,26 @@ Elasticsearch.prototype = {
                 case "get":
                   return resolve((new Response(response)).result())
                   break;
-                case "bulk":
-                  return resolve(true)
-                  break;
                 case "count":
                   return resolve(response.count)
                   break;
                 default:
-                  return resolve(self.oBody ||  self.oDoc ||  self.bDelete);
+                  return resolve(self.oBody ||  self.oDoc ||  self.bDelete || self.bEmptyIndex);
               }
             })
           }
         });
       })
+      .catch(function(err){
+        return Promise.reject(self.onErrorMethod(err))
+      })
   }
 }
 
 module.exports = {
+  onError: function(p_fFuntion){
+    onErrorMethod = p_fFuntion;
+  },
   AddClient: AddClient,
   addClient: AddClient,
   getClient: getClient,
@@ -461,6 +526,14 @@ module.exports = {
     range: function() {
       var oST = new SearchType();
       return oST.range.apply(oST, arguments);
+    },
+    wildcard : function(){
+      var oST = new SearchType();
+      return oST.wildcard.apply(oST, arguments);
+    },
+    prefix : function(){
+      var oST = new SearchType();
+      return oST.prefix.apply(oST, arguments);
     }
   },
   agg: {

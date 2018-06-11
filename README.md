@@ -24,7 +24,7 @@ If you like this package don't hesitate to drop a :star: :smile:
 `npm install --save elasticsearch-helper`
 
 # usage
-
+˛
 ## Add client
 
 ```javascript
@@ -139,6 +139,29 @@ esH.query("Index1")
 esH.query("Index1")
 .use("client2")
 .exists();
+```
+
+### error handling
+
+A method can be created to handle errors (like logging or formating), This error method is part of a Promise and should return something if it needs to keep processing.
+
+**Errors are always processed as Promise rejection**
+
+```javascript
+
+// Global error handling for all queries
+esH.onError(function(err){
+  console.log("This message will appear after every error")
+  return err;
+})
+
+// Query specific error handling
+esH.query("Index1","Type1")
+.onError(function(err){
+  //This onError will overwrite the global onError method for this query.
+  console.log("This message will appear after this query has an error")
+  return err;
+})
 ```
 
 
@@ -275,6 +298,22 @@ NOTE: not all types are currently implemented. Others will be added over time.
     gte: 10,
     lte: 30
   });
+```
+
+* wildcard
+
+```javascript
+  esH.type.wildcard("fieldkey","fieldvalue");
+  // ex:
+  esH.type.wildcard("name.first_name","josh*");
+```
+
+* prefix
+
+```javascript
+  esH.type.prefix("fieldkey","fieldvalue");
+  // ex:
+  esH.type.prefix("name.first_name","josh");
 ```
 
 NOTE: You can still use the old way of adding a type:
