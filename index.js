@@ -223,18 +223,22 @@ Elasticsearch.prototype = {
 
   must: function() {
     this.oQB.must.apply(this.oQB, arguments)
+    this.bHasCondition = true;
     return this;
   },
   should: function() {
     this.oQB.should.apply(this.oQB, arguments)
+    this.bHasCondition = true;
     return this;
   },
   filter: function() {
     this.oQB.filter.apply(this.oQB, arguments)
+    this.bHasCondition = true;
     return this;
   },
   must_not: function() {
     this.oQB.must_not.apply(this.oQB, arguments)
+    this.bHasCondition = true;
     return this;
   },
   deleteIndex: function() {
