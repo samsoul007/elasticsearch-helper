@@ -538,6 +538,10 @@ module.exports = {
     prefix : function(){
       var oST = new SearchType();
       return oST.prefix.apply(oST, arguments);
+    },
+    nested : function(){
+      var oST = new SearchType();
+      return oST.nested.apply(oST, arguments);
     }
   },
   agg: {

@@ -36,6 +36,7 @@ QueryBuilder.prototype = {
   },
   render: function(){
     var self = this;
+
     return {
       "bool": (function(){
         var oReturn = {};

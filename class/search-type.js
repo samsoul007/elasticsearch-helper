@@ -1,5 +1,8 @@
 'use strict'
 
+var QueryBuilder = require("./query-builder")
+
+
 var SearchType = function(){
   this.sKey = false;
   this.uValue = false;
@@ -42,11 +45,23 @@ SearchType.prototype = {
     this._setValues("prefix",p_sKey,p_sValue)
     return this;
   },
+  nested: function(p_sKey,oQB){
+    this._setValues("nested",p_sKey,oQB)
 
+    return this;
+  },
   render: function(){
     var oObj = {}
-    oObj[this.sType] = {};
-    oObj[this.sType][this.sKey] = this.uValue;
+    if(this.sType == "nested"){
+      oObj[this.sType] = {
+        path : this.sKey,
+        query: this.uValue.render()
+      };
+    }else{
+      oObj[this.sType] = {};
+      oObj[this.sType][this.sKey] = this.uValue;
+    }
+
     return oObj;
   }
 }

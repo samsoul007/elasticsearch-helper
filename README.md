@@ -14,17 +14,15 @@ I experienced a lot of issues in the past due to the way Elasticsearch handles t
 With this helper you will be able to query your elasticsearch clusters very easily. Everything is chainable and the query always returns a promise.
 
 
-
 NOTE: Even if we use this on production level, we still find bugs and add improvements to the module codebase. Feel free to fork it and modify it for your own needs.
 
-If you like this package don't hesitate to drop a :star: :smile:
 
 # installation
 
 `npm install --save elasticsearch-helper`
 
 # usage
-˛
+
 ## Add client
 
 ```javascript
@@ -316,10 +314,23 @@ NOTE: not all types are currently implemented. Others will be added over time.
   esH.type.prefix("name.first_name","josh");
 ```
 
-NOTE: You can still use the old way of adding a type:
+* nested
+
+Nested is an advanced feature of Elasticsearch allowing to do queries on sub-documents such as an array of objects. This type require that a specific mapping being setup. For more information: https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-nested-query.html
+
+In nested query you always define the parent and the filters always prepend the parent name. All filters are available.
+
+This type can be combined with other types at any level and/or create sub nested queries.
+
 ```javascript
-  esH.addType().term("fieldkey","fieldvalue");
+  esH.type.nested("parent","filter object");
+  // ex:
+  esH.type.nested("name",esH.filter.must(
+    esH.type.term("name.first", "josh"),
+    esH.type.term("name.last", "wake")
+  ));
 ```
+
 
 #### Retrieve
 
