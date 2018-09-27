@@ -222,6 +222,17 @@ q.id("ID")
 })
 ```
 
+#### Upsert
+
+```javascript
+q.id("ID")
+ .upsert({...}) // Data object to upsert
+ .run()
+  .then(function(hit){
+  // return the data object
+})
+```
+
 ### Multiple Documents
 
 #### Types & search options

@@ -101,6 +101,7 @@ var Elasticsearch = function(p_sIndex, p_sType) {
 
   this.onPagination = false;
   this.iPageSize = 250;
+  this.bUpsert = false
 
   this.oQB = new QueryBuilder();
   this.oAB = new AggregationBuilder();
@@ -186,6 +187,9 @@ Elasticsearch.prototype = {
           oQuery.body = {
             "doc": self.oDoc
           }
+
+          if(self.upsert)
+            oQuery.body.doc_as_upsert = true;
 
           sType = "update";
         } else if (self.bCount) {
@@ -342,6 +346,11 @@ Elasticsearch.prototype = {
     this.oDoc = p_oData
     return this;
   },
+  upsert: function(p_oData) {
+    this.oDoc = p_oData
+    this.bUpsert = true;
+    return this;
+  },
   aggs: function() {
     this.oAB.add.apply(this.oAB, arguments)
     return this;
@@ -408,7 +417,7 @@ Elasticsearch.prototype = {
             es_stream.on('data', function(data) {
               var current_doc = JSON.parse(data.toString());
 
-              var _id = current_doc._id;
+              var _id = current_doc._id
               var _index = current_doc._index;
               var _type = current_doc._type;
 
