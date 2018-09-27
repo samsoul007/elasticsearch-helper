@@ -1,6 +1,6 @@
 {
   "name": "elasticsearch-helper",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "A Nodejs module facilitating querying Elasticsearch clusters.",
   "main": "index.js",
   "scripts": {
