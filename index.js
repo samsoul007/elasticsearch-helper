@@ -90,6 +90,7 @@ var Elasticsearch = function(p_sIndex, p_sType) {
 
   this.sizeResult = false;
   this.arrsFields = [];
+  this.arroSorts = [];
   this.oBody = false;
   this.oDoc = false;
   this.bDelete = false;
@@ -210,6 +211,7 @@ Elasticsearch.prototype = {
 
           oQuery.body.size = self.sizeResult || 10;
           oQuery.body._source = self.arrsFields;
+          oQuery.body.sort = self.arroSorts;
         }
 
         if (sType == "search" && self.oAB.count()) {
@@ -332,6 +334,10 @@ Elasticsearch.prototype = {
   },
   fields: function(p_arroFields) {
     this.arrsFields = p_arroFields;
+    return this;
+  },
+  sort: function(p_arroSorts){
+    this.arroSorts = p_arroSorts
     return this;
   },
   id: function(p_sID) {

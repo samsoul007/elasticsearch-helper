@@ -1,21 +1,53 @@
 
 
 
-# elasticsearch-helper [![npm version](https://badge.fury.io/js/elasticsearch-helper.svg)](https://badge.fury.io/js/elasticsearch-helper) [![NSP Status](https://nodesecurity.io/orgs/jacques-sirot/projects/60dd35a8-0efd-415e-9f72-2e7300f888ef/badge)](https://nodesecurity.io/orgs/jacques-sirot/projects/60dd35a8-0efd-415e-9f72-2e7300f888ef)
+# elasticsearch-helper [![npm version](https://badge.fury.io/js/elasticsearch-helper.svg)](https://badge.fury.io/js/elasticsearch-helper)
 
 A Nodejs module facilitating querying Elasticsearch clusters.
 
 <img src="https://static-www.elastic.co/assets/blteb1c97719574938d/logo-elastic-elasticsearch-lt.svg?q=294" width="200" />
 
+# table of contents
+
+* [disclaimer](#disclaimer)
+* [installation](#installation)
+* [usage](#usage)
+   * [Add client](#add-client)
+   * [Use client](#use-client)
+   * [Indexes](#indexes)
+      * [copyTo](#copyto)
+      * [deleteIndex](#deleteindex)
+      * [exists](#exists)
+      * [error handling](#error-handling)
+   * [Documents](#documents)
+      * [Single Document](#single-document)
+         * [Retrieve](#retrieve)
+         * [Delete](#delete)
+         * [Create/Overwrite](#createoverwrite)
+         * [Update](#update)
+         * [Upsert](#upsert)
+      * [Multiple Documents](#multiple-documents)
+         * [Types &amp; search options](#types--search-options)
+            * [Filter types](#filter-types)
+            * [Search types](#search-types)
+         * [Retrieve](#retrieve-1)
+         * [Delete](#delete-1)
+         * [Count](#count)
+         * [aggregations [BETA]](#aggregations-beta)
+            * [Aggregation types](#aggregation-types)
+         * [Other options](#other-options)
+   * [Examples](#examples)
+      * [Query](#query)
+      * [Query with aggregation](#query-with-aggregation)
+
+
 # disclaimer
 
-I experienced a lot of issues in the past due to the way Elasticsearch handles the queries. I decided to create this helper which we currently use on production level at https://headhunterportal.com and some other projects and had helped us to drastically improve the readability of our code.
+After experiencing a lot of issues due to the way Elasticsearch handles the queries, I decided to create this helper currently used on production level that had helped us to drastically improve the readability and flexibility of our code.
 
 With this helper you will be able to query your elasticsearch clusters very easily. Everything is chainable and the query always returns a promise.
 
-
 NOTE: Even if we use this on production level, we still find bugs and add improvements to the module codebase. Feel free to fork it and modify it for your own needs.
-
 
 # installation
 
@@ -23,22 +55,23 @@ NOTE: Even if we use this on production level, we still find bugs and add improv
 
 # usage
 
+
 ## Add client
 
 ```javascript
-let esH = require("elasticsearch-helper")
+const ES = require("elasticsearch-helper")
 
 // Will create a default client
-esH.addClient("127.0.0.1:9200");
+ES.addClient("127.0.0.1:9200");
 
 // Will create a client with name "client1"
-esH.addClient("client1","127.0.0.1:9200");
+ES.addClient("client1","127.0.0.1:9200");
 
 // Will create a client with name "client1" and will be used as default
-esH.addClient("client1","127.0.0.1:9200",true);
+ES.addClient("client1","127.0.0.1:9200",true);
 
 // Alias:
-esH.AddClient(...)
+ES.AddClient(...)
 ```
 
 ## Use client
@@ -49,16 +82,16 @@ Initialise a query:
 
 ```javascript
 // Querying on index "Index1"
-esH.query("Index1");
+ES.query("Index1");
 
 // Querying on all indexes starting with "Index"
-esH.query("Index*");
+ES.query("Index*");
 
 // Querying on index "Index1" and type "Type1"
-esH.query("Index1","Type1");
+ES.query("Index1","Type1");
 
 // Querying on index "Index1" and type "Type1" using the client "Client1"
-esH.query("Index1","Type1)".use("Client1")
+ES.query("Index1","Type1)".use("Client1")
 ```
 
 ## Indexes
@@ -82,27 +115,27 @@ NOTE2: If you want to copy millions of rows remember to set `size()`
 ```javascript
 
 //Copy from index1 to index2
-esH.query("Index1")
-.copyTo(esH.query("Index2"));
+ES.query("Index1")
+.copyTo(ES.query("Index2"));
 
 //Copy from index1 to index2 on client2
-esH.query("Index1")
-.copyTo(esH.query("Index2").use("client2"));
+ES.query("Index1")
+.copyTo(ES.query("Index2").use("client2"));
 
 //Copy from index1, type1 to index2, type1
-esH.query("Index1","Type1")
-.copyTo(esH.query("Index2"));
+ES.query("Index1","Type1")
+.copyTo(ES.query("Index2"));
 
 //Copy from index1, type1 to index2, type2
-esH.query("Index1","Type1")
-.copyTo(esH.query("Index2","Type2"));
+ES.query("Index1","Type1")
+.copyTo(ES.query("Index2","Type2"));
 
 //Copy documents with first name is Josh from index1 to index2
-esH.query("Index1")
+ES.query("Index1")
 .must(
-  esH.type.term("first_name","Josh"),
+  ES.type.term("first_name","Josh"),
 )
-.copyTo(esH.query("Index2"));
+.copyTo(ES.query("Index2"));
 ```
 
 ### deleteIndex
@@ -116,11 +149,11 @@ NOTE: For security reason you cannot delete multiple indexes at the same time.
 ```javascript
 
 //Delete index1
-esH.query("Index1")
+ES.query("Index1")
 .deleteIndex();
 
 //Delete index1 from client2
-esH.query("Index1")
+ES.query("Index1")
 .use("client2")
 .deleteIndex();
 ```
@@ -131,30 +164,30 @@ Check if an index exists.
 
 ```javascript
 
-esH.query("Index1")
+ES.query("Index1")
 .exists();
 
-esH.query("Index1")
+ES.query("Index1")
 .use("client2")
 .exists();
 ```
 
 ### error handling
 
-A method can be created to handle errors (like logging or formating), This error method is part of a Promise and should return something if it needs to keep processing.
+A method can be created to handle errors (like logging or formatting), This error method is part of a Promise and should return something if it needs to keep processing.
 
 **Errors are always processed as Promise rejection**
 
 ```javascript
 
 // Global error handling for all queries
-esH.onError(function(err){
+ES.onError(function(err){
   console.log("This message will appear after every error")
   return err;
 })
 
 // Query specific error handling
-esH.query("Index1","Type1")
+ES.query("Index1","Type1")
 .onError(function(err){
   //This onError will overwrite the global onError method for this query.
   console.log("This message will appear after this query has an error")
@@ -171,7 +204,7 @@ For those example we will use the query variable 'q':
 
 ```javascript
 // initialise query
-var q = esH.query("Index1","Type1");
+var q = ES.query("Index1","Type1");
 ```
 
 ### Single Document
@@ -244,10 +277,10 @@ GETs and DELETEs are using the same methodology for querying building. Example:
 ```javascript
 q.must(
   // Term type
-  esH.type.term("fieldname","fieldvalue"),
+  ES.type.term("fieldname","fieldvalue"),
   // Add a sub filter in the query
-  esH.filter.should(
-    esH.type.terms("fieldname2","fieldvalues")
+  ES.filter.should(
+    ES.type.terms("fieldname2","fieldvalues")
   )
 )
 ```
@@ -255,22 +288,22 @@ q.must(
 * must
 
 ```javascript
-  esH.filter.must(/* search types as arguments */);
+  ES.filter.must(/* search types as arguments */);
 ```
 * must_not
 
 ```javascript
-  esH.filter.must_not(/* search types as arguments */);
+  ES.filter.must_not(/* search types as arguments */);
 ```
 * should
 
 ```javascript
-  esH.filter.should(/* search types as arguments */);
+  ES.filter.should(/* search types as arguments */);
 ```
 * filter
 
 ```javascript
-  esH.filter.filter(/* search types as arguments */);
+  ES.filter.filter(/* search types as arguments */);
 ```
 
 ##### Search types
@@ -280,30 +313,30 @@ NOTE: not all types are currently implemented. Others will be added over time.
 * term
 
 ```javascript
-  esH.type.term("fieldkey","fieldvalue");
+  ES.type.term("fieldkey","fieldvalue");
   // ex:
-  esH.type.term("name.first_name","josh");
+  ES.type.term("name.first_name","josh");
 ```
 * terms
 
 ```javascript
-  esH.type.terms("fieldkey","fieldvalues as array");
+  ES.type.terms("fieldkey","fieldvalues as array");
   // ex:
-  esH.type.terms("name.first_name",["josh","alan","jack"]);
+  ES.type.terms("name.first_name",["josh","alan","jack"]);
 ```
 * exists
 
 ```javascript
-  esH.type.exists("fieldkey");
+  ES.type.exists("fieldkey");
   // ex:
-  esH.type.exists("name.first_name");
+  ES.type.exists("name.first_name");
 ```
 * range
 
 ```javascript
-  esH.type.range("fieldkey","range object options");
+  ES.type.range("fieldkey","range object options");
   // ex:
-  esH.type.range("age",{
+  ES.type.range("age",{
     gte: 10,
     lte: 30
   });
@@ -312,17 +345,17 @@ NOTE: not all types are currently implemented. Others will be added over time.
 * wildcard
 
 ```javascript
-  esH.type.wildcard("fieldkey","fieldvalue");
+  ES.type.wildcard("fieldkey","fieldvalue");
   // ex:
-  esH.type.wildcard("name.first_name","josh*");
+  ES.type.wildcard("name.first_name","josh*");
 ```
 
 * prefix
 
 ```javascript
-  esH.type.prefix("fieldkey","fieldvalue");
+  ES.type.prefix("fieldkey","fieldvalue");
   // ex:
-  esH.type.prefix("name.first_name","josh");
+  ES.type.prefix("name.first_name","josh");
 ```
 
 * nested
@@ -334,11 +367,11 @@ In nested query you always define the parent and the filters always prepend the 
 This type can be combined with other types at any level and/or create sub nested queries.
 
 ```javascript
-  esH.type.nested("parent","filter object");
+  ES.type.nested("parent","filter object");
   // ex:
-  esH.type.nested("name",esH.filter.must(
-    esH.type.term("name.first", "josh"),
-    esH.type.term("name.last", "wake")
+  ES.type.nested("name",ES.filter.must(
+    ES.type.term("name.first", "josh"),
+    ES.type.term("name.last", "wake")
   ));
 ```
 
@@ -480,17 +513,32 @@ ES.agg.value_count("aggregation name")("field to aggregate on")
 
 #### Other options
 
-```javascript
+* size
 
+```javascript
 // will retrieve 1000 results maximum
 // all queries with a size over 500 will be converted into a scroll.
 q.size(1000)
+```
 
-// will retrieve the documents values for specific keys
+* fields
+
+```javascript
 q.fields(["name","id"])
+```
 
+* type
+
+```javascript
 // will change/retrieve the type
 q.type("type1")
+```
+
+* sorting
+
+[Documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-sort.html)
+```javascript
+q.sort([{ "post_date" : {"order" : "asc"}}, ...])
 
 ```
 
@@ -499,19 +547,19 @@ q.type("type1")
 
 #### Query
 ```javascript
-let esH = require("elasticsearch-helper")
+const ES = require("elasticsearch-helper")
 
-esH.AddClient("client1","127.0.0.1:9200");
+ES.AddClient("client1","127.0.0.1:9200");
 
-esH.query("Index1","Type1")
+ES.query("Index1","Type1")
 .use("client1")
 .size(10)
 .must(
-  esH.addType().term("name","John"),
-  esH.addType().terms("lastname",["Smith","Wake"])
+  ES.addType().term("name","John"),
+  ES.addType().terms("lastname",["Smith","Wake"])
 )
 .must_not(
-  esH.addType().range("age",{
+  ES.addType().range("age",{
     lte:20,
     gte:30
   })
@@ -525,25 +573,25 @@ esH.query("Index1","Type1")
 #### Query with aggregation
 
 ```javascript
-let esH = require("elasticsearch-helper")
+const ES = require("elasticsearch-helper")
 
-esH.AddClient("client1","127.0.0.1:9200");
+ES.AddClient("client1","127.0.0.1:9200");
 
-esH.Query("user")
+ES.Query("user")
 .size(1001) // when an aggregation is set, size is set to 0.
 .must(
-  esH.type.term("name","jacques"),
-  esH.type.range("age",{gt:20,lte:40}),
-  esH.filter.should(
-    esH.type.term("color","blue"),
-    esH.type.term("vehicle","car")
+  ES.type.term("name","jacques"),
+  ES.type.range("age",{gt:20,lte:40}),
+  ES.filter.should(
+    ES.type.term("color","blue"),
+    ES.type.term("vehicle","car")
   )
 )
 .aggs(
-  esH.agg.date_histogram("created_date")("date_created","1d")
+  ES.agg.date_histogram("created_date")("date_created","1d")
     // Child aggregation to the "created_date" aggregation
     .aggs(
-      esH.agg.terms("first_name")("data.first_name.raw")
+      ES.agg.terms("first_name")("data.first_name.raw")
     )
 )
 .run()
