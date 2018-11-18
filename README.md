@@ -521,6 +521,14 @@ ES.agg.value_count("aggregation name")("field to aggregate on")
 q.size(1000)
 ```
 
+* from
+
+```javascript
+// Works with size
+// will retrieve results from index 10
+q.from(10)
+```
+
 * fields
 
 ```javascript

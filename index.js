@@ -99,6 +99,7 @@ var Elasticsearch = function(p_sIndex, p_sType) {
   this.bHasCondition = false;
   this.arroBulk = [];
   this.onErrorMethod = onErrorMethod;
+  this.iFrom = false;
 
   this.onPagination = false;
   this.iPageSize = 250;
@@ -210,6 +211,10 @@ Elasticsearch.prototype = {
           };
 
           oQuery.body.size = self.sizeResult || 10;
+
+          if(self.iFrom)
+            oQuery.body.from = self.iFrom;
+
           oQuery.body._source = self.arrsFields;
           oQuery.body.sort = self.arroSorts;
         }
@@ -332,6 +337,10 @@ Elasticsearch.prototype = {
     this.sizeResult = p_iSize;
     return this;
   },
+  from: function(p_iIndex){
+    this.iFrom = p_iIndex;
+    return this;
+  },
   fields: function(p_arroFields) {
     this.arrsFields = p_arroFields;
     return this;
@@ -341,6 +350,9 @@ Elasticsearch.prototype = {
     return this;
   },
   id: function(p_sID) {
+    if(!p_sID)
+      throw "ID in id() not set";
+
     this.sID = p_sID;
     return this;
   },
