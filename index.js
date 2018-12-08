@@ -569,6 +569,10 @@ module.exports = {
     nested : function(){
       var oST = new SearchType();
       return oST.nested.apply(oST, arguments);
+    },
+    geo : function(){
+      var oST = new SearchType();
+      return oST.geo.apply(oST, arguments);
     }
   },
   agg: {

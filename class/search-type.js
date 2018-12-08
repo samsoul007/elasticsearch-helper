@@ -10,9 +10,9 @@ var SearchType = function(){
 }
 
 SearchType.prototype = {
-  _setValues : function(p_sType,p_sKey,p_sValue){
+  _setValues : function(p_sType,p_sKey,p_uValue){
     this.sKey = p_sKey;
-    this.uValue = p_sValue;
+    this.uValue = p_uValue;
     this.sType = p_sType;
   },
   term : function(p_sKey,p_sValue){
@@ -50,16 +50,41 @@ SearchType.prototype = {
 
     return this;
   },
+  geo: function(p_sKey,p_oPoint,p_sDistance,p_sDistanceType){
+    if(p_sDistanceType && (p_sDistanceType !== "arc" || p_sDistanceType !== "plane"))
+      throw "Distance type needs to be 'arc' or 'plane'";
+
+    this._setValues("geo_distance",p_sKey,{
+      distance: p_sDistance,
+      type: p_sDistanceType,
+      point: p_oPoint
+    })
+    return this;
+  },
   render: function(){
     var oObj = {}
-    if(this.sType == "nested"){
-      oObj[this.sType] = {
-        path : this.sKey,
-        query: this.uValue.render()
-      };
-    }else{
-      oObj[this.sType] = {};
-      oObj[this.sType][this.sKey] = this.uValue;
+
+    switch(this.sType){
+      case "geo_distance":
+        oObj[this.sType] = {
+          "distance" : this.uValue.distance,
+          [this.sKey] : this.uValue.point
+        }
+
+        if(this.uValue.type){
+          oObj[this.sType].distance_type = this.uValue.type
+        }
+      break;
+      case "nested":
+        oObj[this.sType] = {
+          path : this.sKey,
+          query: this.uValue.render()
+        };
+      break;
+      default:
+        oObj[this.sType] = {};
+        oObj[this.sType][this.sKey] = this.uValue;
+      break;
     }
 
     return oObj;

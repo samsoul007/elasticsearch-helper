@@ -375,6 +375,22 @@ This type can be combined with other types at any level and/or create sub nested
   ));
 ```
 
+* geo distance
+
+Geo distance is an advanced feature that require a specific mapping in your index. For more information:
+ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-geo-distance-query.html
+
+Geo distance requires a few parameters:
+- The starting point as a latiturde & longitude
+- The distance around this point - https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#distance-units
+- The type of calculation to apply - `arc` or `planar` (`arc` default)
+
+```javascript
+  ES.type.geo("fieldkey","origin latlon","distance"[,"calculation"]);
+  // ex:
+  ES.type.geo("location.geo",{ "lat": 48,"lon": 2 },"120km"[,"arc"])
+  //Note: latlon value can be set as string ('48,2') or as an array ([48,2])
+```
 
 #### Retrieve
 
