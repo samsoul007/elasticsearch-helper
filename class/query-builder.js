@@ -1,53 +1,52 @@
-'use strict'
+const ConditionBuilder = require('./condition-builder');
 
-var ConditionBuilder = require("./condition-builder")
-
-var QueryBuilder = function(){
-   this.arroConditions = {};
+function QueryBuilder() {
+  this.arroConditions = {};
 }
 
 QueryBuilder.prototype = {
-  _add: function(CB,values){
-    if(this.arroConditions[CB.getName()])
-      throw "you can only have one "+CB.getName()+" condition";
+  _add(CB, values) {
+    if (this.arroConditions[CB.getName()]) throw new Error(`you can only have one ${CB.getName()} condition`);
 
-    for(var key in values){
+    Object.keys(values).forEach((key) => {
       CB.add(values[key]);
-    }
+    });
 
     this.arroConditions[CB.getName()] = CB;
     return this;
   },
-  must: function(){
-    var oCB = new ConditionBuilder("must");
-    return this._add(oCB,arguments);
+  must(...args) {
+    const oCB = new ConditionBuilder('must');
+    return this._add(oCB, args);
   },
-  must_not: function(){
-    var oCB = new ConditionBuilder("must_not");
-    return this._add(oCB,arguments);
+  must_not(...args) {
+    const oCB = new ConditionBuilder('must_not');
+    return this._add(oCB, args);
   },
-  should: function(){
-    var oCB = new ConditionBuilder("should");
-    return this._add(oCB,arguments);
+  should(...args) {
+    const oCB = new ConditionBuilder('should');
+    return this._add(oCB, args);
   },
-  filter: function(){
-    var oCB = new ConditionBuilder("filter");
-    return this._add(oCB,arguments);
+  filter(...args) {
+    const oCB = new ConditionBuilder('filter');
+    return this._add(oCB, args);
   },
-  render: function(){
-    var self = this;
+  render() {
+    const self = this;
 
     return {
-      "bool": (function(){
-        var oReturn = {};
-        for( var key in self.arroConditions){
-          var oData = self.arroConditions[key].render()
+      bool: (() => {
+        const oReturn = {};
+
+        Object.keys(self.arroConditions).forEach((key) => {
+          const oData = self.arroConditions[key].render();
           oReturn[oData.name] = oData.conditions;
-        }
+        });
+
         return oReturn;
-      })()
-    }
-  }
-}
+      })(),
+    };
+  },
+};
 
 module.exports = QueryBuilder;

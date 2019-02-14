@@ -1,31 +1,33 @@
-const ES = require("./index")
+/* eslint-disable */
+
+const ES = require('./index');
 
 /**
  * Create a client based on a host
  * @param {string} name optional
  * @param {string} host ip:port
  */
-ES.AddClient("127.0.0.1:9200");
+ES.AddClient('127.0.0.1:9200');
 
-ES.Query("user")
-.aggs(
-  ES.agg.date_histogram("created_date")("date_created","1d")
-    .aggs(
-      ES.agg.sum("total")("date_created")
-    )
-)
-.run()
-.then(function(response){
-    var arrayAggList = response.agg("created_date")
+ES.Query('user')
+  .aggs(
+    ES.agg.date_histogram('created_date')('date_created', '1d')
+      .aggs(
+        ES.agg.sum('total')('date_created'),
+      ),
+  )
+  .run()
+  .then((response) => {
+    const arrayAggList = response.agg('created_date');
 
-    var arrayChildAggList = arrayAggList.agg("total");
-    for(var parentKeyvalue in arrayChildAggList){
-        console.log(arrayChildAggList[parentKeyvalue].values())
+    const arrayChildAggList = arrayAggList.agg('total');
+    for (const parentKeyvalue in arrayChildAggList) {
+      console.log(arrayChildAggList[parentKeyvalue].values());
     }
-})
-.catch(function(e){
-  console.log(e)
-})
+  })
+  .catch((e) => {
+    console.log(e);
+  });
 
 // Aggregation
 // ES.Query("user")
@@ -89,4 +91,4 @@ ES.Query("user")
 //   //error
 // })
 
-//Query functions
+// Query functions

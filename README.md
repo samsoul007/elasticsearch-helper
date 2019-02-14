@@ -13,8 +13,10 @@ A Nodejs module facilitating querying Elasticsearch clusters.
 * [installation](#installation)
 * [usage](#usage)
    * [Add client](#add-client)
+   * [Global functions](#global-functions)
    * [Use client](#use-client)
    * [Indexes](#indexes)
+      * [mappings](#mappings)
       * [copyTo](#copyto)
       * [deleteIndex](#deleteindex)
       * [exists](#exists)
@@ -45,7 +47,7 @@ A Nodejs module facilitating querying Elasticsearch clusters.
 
 After experiencing a lot of issues due to the way Elasticsearch handles the queries, I decided to create this helper currently used on production level that had helped us to drastically improve the readability and flexibility of our code.
 
-With this helper you will be able to query your elasticsearch clusters very easily. Everything is chainable and the query always returns a promise.
+With this helper you will be able to query your Elasticsearch clusters very easily. Everything is chainable and the query always returns a promise.
 
 NOTE: Even if we use this on production level, we still find bugs and add improvements to the module codebase. Feel free to fork it and modify it for your own needs.
 
@@ -73,6 +75,14 @@ ES.addClient("client1","127.0.0.1:9200",true);
 // Alias:
 ES.AddClient(...)
 ```
+
+## Global functions
+
+```javascript
+// Return an array of all indexes in a cluster
+ES.indexes("[Client name]")
+```
+
 
 ## Use client
 
@@ -102,6 +112,16 @@ New ones will be added over time.
 
 NOTE: All those methods return a promise.
 
+### mappings
+
+Return mappings for specific index(es)
+
+```javascript
+//Retrieve mappings of index1
+ES.query("Index1")
+.mappings()
+```
+
 ### copyTo
 
 Easily copy an index/type to another client/index/type using bulk inserts.
@@ -113,7 +133,6 @@ NOTE2: If you want to copy millions of rows remember to set `size()`
 
 
 ```javascript
-
 //Copy from index1 to index2
 ES.query("Index1")
 .copyTo(ES.query("Index2"));
@@ -147,7 +166,6 @@ WARNING: This operation is final and cannot be reverted unless you have a snapsh
 NOTE: For security reason you cannot delete multiple indexes at the same time.
 
 ```javascript
-
 //Delete index1
 ES.query("Index1")
 .deleteIndex();
@@ -163,7 +181,6 @@ ES.query("Index1")
 Check if an index exists.
 
 ```javascript
-
 ES.query("Index1")
 .exists();
 

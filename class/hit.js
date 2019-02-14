@@ -1,22 +1,20 @@
-'use strict'
-
-var Hit = function(p_oHit){
-  this.oHit = p_oHit
+function Hit(oHit) {
+  this.oHit = oHit;
 }
 
 Hit.prototype = {
-  id : function(){
+  id() {
     return this.oHit._id;
   },
-  data: function(){
+  data() {
     return this.oHit._source;
   },
-  index: function(){
+  index() {
     return this.oHit._index;
   },
-  type: function(){
+  type() {
     return this.oHit._type;
-  }
-}
+  },
+};
 
 module.exports = Hit;

@@ -1,42 +1,36 @@
-'use strict'
-
-var AggregationBuilder = function(){
-   this.oAggregations = {};
+function AggregationBuilder() {
+  this.oAggregations = {};
 }
 
 AggregationBuilder.prototype = {
-  getByName : function(p_sName){
-    return this.oAggregations[p_sName] || false;
+  getByName(sName) {
+    return this.oAggregations[sName] || false;
   },
-  count: function(){
-    var i = 0;
-    for(var key in this.oAggregations){
-      i++;
-    }
-
-    return i;
+  count() {
+    return Object.keys(this.oAggregations).length;
   },
-  _add: function(values){
-    for(var key in values){
-      var oAgg = values[key];
-      if(this.oAggregations[oAgg.getName()])
-        throw "you can only have one "+oAgg.getName()+" aggregation";
+  _add(values) {
+    Object.keys(values).forEach((key) => {
+      const oAgg = values[key];
+      if (this.oAggregations[oAgg.getName()]) throw new Error(`you can only have one ${oAgg.getName()} aggregation`);
 
-      this.oAggregations[oAgg.getName()]=oAgg;
-    }
+      this.oAggregations[oAgg.getName()] = oAgg;
+    });
+
     return this;
   },
-  add: function(){
-    return this._add(arguments);
+  add(...args) {
+    return this._add(...args);
   },
-  render: function(){
-    var self = this;
-    var oReturn = {};
-    for( var key in self.oAggregations){
-      oReturn[key] =  self.oAggregations[key].render();
-    }
-    return oReturn;
-  }
-}
+  render() {
+    const self = this;
+    const oReturn = {};
+    Object.keys(self.oAggregations).forEach((key) => {
+      oReturn[key] = self.oAggregations[key].render();
+    });
 
-module.exports = AggregationBuilder
+    return oReturn;
+  },
+};
+
+module.exports = AggregationBuilder;

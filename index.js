@@ -1,19 +1,16 @@
-'use strict';
+const ES = require('elasticsearch');
+const ElasticsearchScrollStream = require('elasticsearch-scroll-stream');
+const _ = require('lodash');
 
-var ES = require("elasticsearch");
-var ElasticsearchScrollStream = require('elasticsearch-scroll-stream');
-
-var Response = require("./class/response")
-var QueryBuilder = require("./class/query-builder")
-var ConditionBuilder = require("./class/condition-builder")
-var AggregationBuilder = require("./class/aggregation-builder")
-var SearchType = require("./class/search-type")
-var AggregationType = require("./class/aggregation-type")
-var _ = require("lodash");
+const Response = require('./class/response');
+const QueryBuilder = require('./class/query-builder');
+const AggregationBuilder = require('./class/aggregation-builder');
+const SearchType = require('./class/search-type');
+const AggregationType = require('./class/aggregation-type');
 // var oESClient = false;
-var oESClientList = {};
+const oESClientList = {};
 
-var sDefaultName = "default";
+let sDefaultName = 'default';
 
 /**
  * Create a client
@@ -27,32 +24,27 @@ var sDefaultName = "default";
  * @param {String} Host - host (ex: '127.0.0.1:9200')
  * @return {Void}
  */
-var AddClient = function() {
-  var sName = "default";
-  var sHost = false;
+const AddClient = (...args) => {
+  let sName = 'default';
+  let sHost = false;
 
-  if (arguments.length == 1) {
-    if (oESClientList["default"])
-      return;
+  if (args.length === 1) {
+    if (oESClientList.default) return;
 
-    sHost = arguments[0];
-
+    [sHost] = args;
   } else {
-    if (oESClientList[arguments[0]])
-      return;
+    if (oESClientList[args[0]]) return;
 
-    sName = arguments[0];
-    sHost = arguments[1];
+    ([sName, sHost] = args);
 
-    if (arguments[2] && arguments[2] == true)
-      sDefaultName = sName;
+    if (args[2] && args[2] === true) sDefaultName = sName;
   }
 
   oESClientList[sName] = new ES.Client({
     host: sHost,
     // log: 'trace'
   });
-}
+};
 
 /**
  * Return a client
@@ -60,32 +52,70 @@ var AddClient = function() {
  * @param {String} Name - host (ex: 'myES')
  * @return {Object} Client or false if not found
  */
-var getClient = function() {
-  if (arguments.length == 0 && oESClientList[sDefaultName]) {
+const getClient = (...args) => {
+  if (args.length === 0 && oESClientList[sDefaultName]) {
     return oESClientList[sDefaultName];
-  } else if (oESClientList[arguments[0]]) {
-    return oESClientList[arguments[0]]
-  } else {
-    return false;
+  } if (oESClientList[args[0]]) {
+    return oESClientList[args[0]];
   }
-}
-
-var onErrorMethod = function(err){
-  return err;
+  return false;
 };
 
-var promiseSerie = function(arroPromises) {
-  var p = Promise.resolve();
-  return arroPromises.reduce(function(pacc, fn) {
-    return pacc = pacc.then(fn);
-  }, p);
+const indexes = (sESClient) => {
+  return Promise.resolve()
+  .then(function(){
+    if(sESClient)
+      return getClient(sESClient)
+
+    return getClient();
+  })
+  .then(function(oClient){
+    if(!oClient)
+      return Promise.reject(new Error("Cannot find client"))
+
+    return oClient.cat.indices()
+    .then(function(resp){
+      return resp.split("\n");
+    })
+    .then(function(arrsIndexes){
+      const columns = ["health","status","index","uuid",null,null,"docs.count","docs.deleted","store.size","pri.store.size"]
+      const parse = [null,null,null,null,null,null,parseInt,parseInt,null,null];
+      const arroIndexes = [];
+
+      for(let i = 0 ; i < arrsIndexes.length; i+=1){
+        if(arrsIndexes[i].trim() === "")
+          continue;
+
+        const arrsLine = arrsIndexes[i].replace(/\s\s+/g, ' ').split(" ");
+        const oIndex = {}
+        for(let j=0; j < arrsLine.length ; j+=1){
+          if(columns[j]){
+            oIndex[columns[j]] = parse[j]? parse[j](arrsLine[j]):arrsLine[j];
+          }
+        }
+        arroIndexes.push(oIndex)
+      }
+
+      return arroIndexes;
+    })
+  })
 }
 
-var Elasticsearch = function(p_sIndex, p_sType) {
+let onErrorMethod = err => err;
+
+const promiseSerie = (arroPromises) => {
+  const p = Promise.resolve();
+  return arroPromises.reduce((pacc, fn) => {
+    pacc = pacc.then(fn); // eslint-disable-line no-param-reassign
+    return pacc;
+  }, p);
+};
+
+function Elasticsearch(sIndex, sType) {
   this.oESClient = false;
 
-  this.sIndex = p_sIndex;
-  this.sType = p_sType;
+  this.sIndex = sIndex;
+  this.sType = sType;
   this.sID = false;
 
   this.sizeResult = false;
@@ -103,532 +133,498 @@ var Elasticsearch = function(p_sIndex, p_sType) {
 
   this.onPagination = false;
   this.iPageSize = 250;
-  this.bUpsert = false
+  this.bUpsert = false;
 
   this.oQB = new QueryBuilder();
   this.oAB = new AggregationBuilder();
 }
 
 Elasticsearch.prototype = {
-  type: function(){
-    if(!arguments.length)
-      return this.sType
+  type(...args) {
+    if (!args.length) return this.sType;
 
-    this.sType = arguments[0];
+    [this.sType] = args;
     return this;
   },
-  onError : function(p_fFunction){
-    this.onErrorMethod = p_fFunction;
+  onError(fFunction) {
+    this.onErrorMethod = fFunction;
     return this;
   },
-  onPagination: function(p_fFuntion,p_iSize){
-    this.onPagination = p_fFuntion;
-    this.iPageSize = p_iSize || this.iPageSize;
+  onPagination(fFuntion, iSize) {
+    this.onPagination = fFuntion;
+    this.iPageSize = iSize || this.iPageSize;
     return this;
   },
-  _hasAggregation: function() {
-    return this.oAB.count() ? true : false;
+  _hasAggregation() {
+    return !!this.oAB.count();
   },
-  _getClient: function() {
-    return this.oESClient || oESClientList["default"];
+  _getClient() {
+    return this.oESClient || oESClientList.default;
   },
-  _generateQuery: function() {
-    var self = this;
+  _generateQuery() {
+    const self = this;
 
-    return new Promise(function(resolve, reject) {
-      var sType = "search";
-      var oQuery = {
+    return new Promise(((resolve, reject) => {
+      let sType = 'search';
+      const oQuery = {
         index: self.sIndex,
-      }
+      };
 
-      if (self.sType)
-        oQuery.type = self.sType
+      if (self.sType) oQuery.type = self.sType;
 
-      //Dealing with bulk
+      // Dealing with bulk
       if (self.arroBulk.length) {
         if (self.sID) {
-          return reject("You cannot use id() with bulk()")
+          return reject(new Error('You cannot use id() with bulk()'));
         }
 
         oQuery.body = self.arroBulk;
-        sType = "bulk";
+        sType = 'bulk';
       } else {
         if (self.sID) {
-          if (!self.sType)
-            return reject("You need to set a type to search or update by ID")
+          if (!self.sType) return reject(new Error('You need to set a type to search or update by ID'));
 
           oQuery.id = self.sID;
-          sType = "get";
+          sType = 'get';
         }
 
         if (self.bDelete) {
-          if (self.sID)
-            sType = "delete"
+          if (self.sID) sType = 'delete';
           else {
-            if (!self.bHasCondition)
-              return reject("You need a request body")
+            if (!self.bHasCondition) return reject(new Error('You need a request body'));
 
             oQuery.body = {
-              query: self.oQB.render()
+              query: self.oQB.render(),
             };
 
-            sType = "deleteByQuery";
+            sType = 'deleteByQuery';
           }
-        }else if(self.bEmptyIndex) {
+        } else if (self.bEmptyIndex) {
           oQuery.body = {
             query: {
-              "match_all":{}
-            }
+              match_all: {},
+            },
           };
 
-          sType = "deleteByQuery";
-        }else if (self.oDoc) {
-          if (!self.sID)
-            return reject("You need to set an id to update")
+          sType = 'deleteByQuery';
+        } else if (self.oDoc) {
+          if (!self.sID) return reject(new Error('You need to set an id to update'));
 
           oQuery.body = {
-            "doc": self.oDoc
-          }
+            doc: self.oDoc,
+          };
 
-          if(self.upsert)
-            oQuery.body.doc_as_upsert = true;
+          if (self.upsert) oQuery.body.doc_as_upsert = true;
 
-          sType = "update";
+          sType = 'update';
         } else if (self.bCount) {
           oQuery.body = {
-            query: self.oQB.render()
+            query: self.oQB.render(),
           };
-          sType = "count";
+          sType = 'count';
         } else if (self.oBody) {
-          if (!self.sID)
-            return reject("You need to set an id to index")
+          if (!self.sID) return reject(new Error('You need to set an id to index'));
 
           oQuery.body = self.oBody;
-          sType = "index";
+          sType = 'index';
         } else if (!self.sID) {
           oQuery.body = {
-            query: self.oQB.render()
+            query: self.oQB.render(),
           };
 
-          oQuery.body.size = self.sizeResult || 10;
+          oQuery.body.size = self.sizeResult || 10;
 
-          if(self.iFrom)
-            oQuery.body.from = self.iFrom;
+          if (self.iFrom) oQuery.body.from = self.iFrom;
 
           oQuery.body._source = self.arrsFields;
           oQuery.body.sort = self.arroSorts;
         }
 
-        if (sType == "search" && self.oAB.count()) {
+        if (sType === 'search' && self.oAB.count()) {
           oQuery.body.size = 0;
           oQuery.body.aggs = self.oAB.render();
         }
       }
 
-      resolve({
+      return resolve({
         type: sType,
-        query: oQuery
+        query: oQuery,
       });
-    })
+    }));
   },
+  must(...args) {
+    this.oQB.must(...args);
+    this.bHasCondition = true;
+    return this;
+  },
+  should(...args) {
+    this.oQB.should(...args);
+    this.bHasCondition = true;
+    return this;
+  },
+  filter(...args) {
+    this.oQB.filter(...args);
+    this.bHasCondition = true;
+    return this;
+  },
+  must_not(...args) {
+    this.oQB.must_not(...args);
+    this.bHasCondition = true;
+    return this;
+  },
+  deleteIndex() {
+    if (this.sIndex.indexOf('*') !== -1 || this.sIndex.split(',').length > 1) throw new Error('For security reasons you cannot delete multiple indexes');
 
-  must: function() {
-    this.oQB.must.apply(this.oQB, arguments)
-    this.bHasCondition = true;
-    return this;
-  },
-  should: function() {
-    this.oQB.should.apply(this.oQB, arguments)
-    this.bHasCondition = true;
-    return this;
-  },
-  filter: function() {
-    this.oQB.filter.apply(this.oQB, arguments)
-    this.bHasCondition = true;
-    return this;
-  },
-  must_not: function() {
-    this.oQB.must_not.apply(this.oQB, arguments)
-    this.bHasCondition = true;
-    return this;
-  },
-  deleteIndex: function() {
-    if (this.sIndex.indexOf('*') !== -1 ||  this.sIndex.split(",").length > 1)
-      throw "For security reasons you cannot delete multiple indexes";
-
-
-    var self = this;
-    return new Promise(function(resolve, reject) {
+    const self = this;
+    return new Promise(((resolve, reject) => {
       self._getClient().indices.delete({
-        index: self.sIndex
-      }, function(err, response) {
+        index: self.sIndex,
+      }, (err, response) => {
         if (err) return reject(err);
 
-        resolve(response.acknowledged)
-      })
-    })
+        return resolve(response.acknowledged);
+      });
+    }));
   },
-  empty: function(){
+  mappings(){
+    return this._getClient().indices.getMapping({
+      index: this.sIndex,
+    });
+  },
+  empty() {
     this.bEmptyIndex = true;
     return this.run();
   },
-  exists: function() {
-    var self = this;
-    return new Promise(function(resolve, reject) {
-      self._getClient().indices.exists({
-        index: self.sIndex
-      }, function(err, response) {
-        if (err) return reject(err);
-
-        resolve(response)
-      })
-    })
+  exists() {
+    return this._getClient().indices.exists({
+      index: this.sIndex,
+    });
   },
-  copyTo: function(oQueryObj) {
-    if (this._hasAggregation())
-      throw "You cannot copy while doing aggregation";
+  copyTo(oQueryObj) {
+    if (this._hasAggregation()) throw new Error('You cannot copy while doing aggregation');
 
     if (!this.sizeResult) {
       this.sizeResult = 50000000;
     }
 
     return this.run()
-    .then(function(arroHit) {
-      for (var i = 0; i < arroHit.length; i++) {
-        var oHit = arroHit[i];
-        oQueryObj.bulk(oHit.data(), oHit.id(), oHit.type())
-      }
+      .then((arroHit) => {
+        for (let i = 0; i < arroHit.length; i += 1) {
+          const oHit = arroHit[i];
+          oQueryObj.bulk(oHit.data(), oHit.id(), oHit.type());
+        }
 
-      return oQueryObj.run();
-    })
+        return oQueryObj.run();
+      });
   },
-  bulk: function(p_oData, p_sId, p_sType) {
-    if (!this.sType && !p_sType)
-      throw "You need to set a type when you create a query or when you call the bulk() method to copy";
+  bulk(oData, sId, sType) {
+    if (!this.sType && !sType) throw new Error('You need to set a type when you create a query or when you call the bulk() method to copy');
 
-    if (!this.sID && !p_sId)
-      throw "You need to set an id either when you define a query with id() or when calling the bulk() method";
+    if (!this.sID && !sId) throw new Error('You need to set an id either when you define a query with id() or when calling the bulk() method');
 
     this.arroBulk.push({
-      "index": {
-        "_index": this.sIndex,
-        "_type": this.sType || p_sType,
-        "_id": this.sID || p_sId
-      }
-    })
-    this.arroBulk.push(p_oData);
+      index: {
+        _index: this.sIndex,
+        _type: this.sType || sType,
+        _id: this.sID || sId,
+      },
+    });
+    this.arroBulk.push(oData);
     return this;
   },
-  log: function() {
-    this._generateQuery().then(function(oData) {
-      console.log(JSON.stringify(oData, null, 2));
-    })
+  log() {
+    this._generateQuery().then((oData) => {
+      console.log(JSON.stringify(oData, null, 2)); // eslint-disable-line no-console
+    });
 
     return this;
   },
-  use: function(p_sClientName) {
-    if (!oESClientList[p_sClientName])
-      throw "client with name " + p_sClientName + " doesn't exists";
+  use(sClientName) {
+    if (!oESClientList[sClientName]) throw new Error(`client with name ${sClientName} doesn't exists`);
 
-    this.oESClient = oESClientList[p_sClientName];
+    this.oESClient = oESClientList[sClientName];
     return this;
   },
-  size: function(p_iSize) {
-    this.sizeResult = p_iSize;
+  size(iSize) {
+    this.sizeResult = iSize;
     return this;
   },
-  from: function(p_iIndex){
-    this.iFrom = p_iIndex;
+  from(iIndex) {
+    this.iFrom = iIndex;
     return this;
   },
-  fields: function(p_arroFields) {
-    this.arrsFields = p_arroFields;
+  fields(arroFields) {
+    this.arrsFields = arroFields;
     return this;
   },
-  sort: function(p_arroSorts){
-    this.arroSorts = p_arroSorts
+  sort(arroSorts) {
+    this.arroSorts = arroSorts;
     return this;
   },
-  id: function(p_sID) {
-    if(!p_sID)
-      throw "ID in id() not set";
+  id(sID) {
+    if (!sID) throw new Error('ID in id() not set');
 
-    this.sID = p_sID;
+    this.sID = sID;
     return this;
   },
-  body: function(p_oBody) {
-    this.oBody = p_oBody;
+  body(oBody) {
+    this.oBody = oBody;
     return this;
   },
-  update: function(p_oData) {
-    this.oDoc = p_oData
+  update(oData) {
+    this.oDoc = oData;
     return this;
   },
-  upsert: function(p_oData) {
-    this.oDoc = p_oData
+  upsert(oData) {
+    this.oDoc = oData;
     this.bUpsert = true;
     return this;
   },
-  aggs: function() {
-    this.oAB.add.apply(this.oAB, arguments)
+  aggs(...args) {
+    this.oAB.add.apply(this.oAB, ...args);
     return this;
   },
-  delete: function() {
+  delete() {
     this.bDelete = true;
     return this.run();
   },
-  count: function()  {
+  count() {
     this.bCount = true;
     return this.run();
   },
-  run: function(p_bLog) {
-    var self = this;
+  run(bLog) {
+    const self = this;
 
     this.oESClient = this._getClient();
 
     if (!this.oESClient) {
-      throw "need to setup the elasticsearch client";
+      throw new Error('need to setup the elasticsearch client');
     }
 
     return this._generateQuery()
-      .then(function(oQueryData) {
-        if(p_bLog)
-          console.log(JSON.stringify(oQueryData, null, 2));
+      .then((oQueryData) => {
+        if (bLog) console.log(JSON.stringify(oQueryData, null, 2)); // eslint-disable-line no-console
 
-        var oQuery = oQueryData.query;
-        var sType = oQueryData.type;
+        const oQuery = oQueryData.query;
+        const sType = oQueryData.type;
 
-        if(sType == "bulk"){
-          var arroDataBulk = _.chunk(self.arroBulk, 500);
+        if (sType === 'bulk') {
+          const arroDataBulk = _.chunk(self.arroBulk, 500);
 
-          var arroPromises = [];
-          for(var i = 0 ; i < arroDataBulk.length; i++){
-            arroPromises.push((function(arroBulk){
-              return function(){
-                return new Promise(function(resolve,reject){
-                  self.oESClient.bulk({
-                    body: arroBulk
-                  }, function(err, response) {
-                    if(err)
-                      return reject(err)
+          const arroPromises = [];
+          for (let i = 0; i < arroDataBulk.length; i += 1) {
+            arroPromises.push((arroBulk => () => new Promise(((resolve, reject) => {
+              self.oESClient.bulk({
+                body: arroBulk,
+              }, (err) => {
+                if (err) return reject(err);
 
-                    resolve(true);
-                  });
-                })
-              }
-            })(arroDataBulk[i]))
+                return resolve(true);
+              });
+            })))(arroDataBulk[i]));
           }
           return promiseSerie(arroPromises);
         }
 
-        return new Promise(function(resolve, reject) {
+        return new Promise(((resolve, reject) => {
+          // if size is more than 5000 we do an automatic scroll
+          if (sType === 'search' && oQuery.body.size && oQuery.body.size > 5000 && !self.oAB.count()) {
+            const arroData = [];
 
-          //if size is more than 5000 we do an automatic scroll
-          if (sType == "search" && oQuery.body.size && oQuery.body.size > 5000 && !self.oAB.count()) {
-            var arroData = [];
-
-            oQuery.scroll = "1m";
+            oQuery.scroll = '1m';
             oQuery.size = 5000;
 
-            var es_stream = new ElasticsearchScrollStream(self.oESClient, oQuery, ['_id', '_index', '_type']);
+            const oESStream = new ElasticsearchScrollStream(self.oESClient, oQuery, ['_id', '_index', '_type']);
 
-            es_stream.on('data', function(data) {
-              var current_doc = JSON.parse(data.toString());
+            oESStream.on('data', (data) => {
+              const oCurrentDoc = JSON.parse(data.toString());
 
-              var _id = current_doc._id
-              var _index = current_doc._index;
-              var _type = current_doc._type;
+              const { _id, _index, _type } = oCurrentDoc;
 
-              delete current_doc._id;
-              delete current_doc._index;
-              delete current_doc._type;
+              delete oCurrentDoc._id;
+              delete oCurrentDoc._index;
+              delete oCurrentDoc._type;
 
               arroData.push({
-                _id: _id,
-                _index: _index,
-                _type: _type,
-                _source: current_doc
+                _id,
+                _index,
+                _type,
+                _source: oCurrentDoc,
               });
             });
 
-            es_stream.on('end', function() {
-              var response = {
+            oESStream.on('end', () => {
+              const response = {
                 hits: {
                   total: arroData.length,
-                  hits: arroData
-                }
-              }
+                  hits: arroData,
+                },
+              };
 
               resolve((new Response(response)).results());
             });
 
-            es_stream.on('error', function(err) {
+            oESStream.on('error', (err) => {
               reject(err);
             });
-          }
-          else {
-            self.oESClient[sType](oQuery, function(err, response) {
+          } else {
+            self.oESClient[sType](oQuery, (err, response) => {
               if (err) {
-                if (sType == "get" && err.status == 404) {
+                if (sType === 'get' && err.status === 404) {
                   return resolve(false);
-                } else {
-                  return reject(err)
                 }
+                return reject(err);
               }
 
               switch (sType) {
-                case "search":
+                case 'search':
                   if (response.aggregations) {
                     response.aggregations.pattern = self.oAB;
-                    return resolve(new Response(response))
+                    return resolve(new Response(response));
                   }
 
-                  return resolve((new Response(response)).results())
-                  break;
-                case "get":
-                  return resolve((new Response(response)).result())
-                  break;
-                case "count":
-                  return resolve(response.count)
-                  break;
+                  return resolve((new Response(response)).results());
+                case 'get':
+                  return resolve((new Response(response)).result());
+                case 'count':
+                  return resolve(response.count);
                 default:
-                  return resolve(self.oBody ||  self.oDoc ||  self.bDelete || self.bEmptyIndex);
+                  return resolve(self.oBody || self.oDoc || self.bDelete || self.bEmptyIndex);
               }
-            })
+            });
           }
-        });
+        }));
       })
-      .catch(function(err){
-        return Promise.reject(self.onErrorMethod(err))
-      })
-  }
-}
+      .catch(err => Promise.reject(self.onErrorMethod(err)));
+  },
+};
 
 module.exports = {
-  onError: function(p_fFuntion){
-    onErrorMethod = p_fFuntion;
+  onError(fFuntion) {
+    onErrorMethod = fFuntion;
   },
-  AddClient: AddClient,
+  AddClient,
   addClient: AddClient,
-  getClient: getClient,
-  Query: function(p_sIndex, p_sType) {
-    return new Elasticsearch(p_sIndex, p_sType)
+  getClient,
+  indexes,
+  Query(sIndex, sType) {
+    return new Elasticsearch(sIndex, sType);
   },
-  query: function(p_sIndex, p_sType) {
-    return new Elasticsearch(p_sIndex, p_sType)
+  query(sIndex, sType) {
+    return new Elasticsearch(sIndex, sType);
   },
-  addType: function() {
+  addType() {
     return new SearchType();
   },
-  addFilter: function() {
+  addFilter() {
     return new QueryBuilder();
   },
   filter: {
-    should: function() {
-      var oQB = new QueryBuilder();
-      return oQB.should.apply(oQB, arguments);
+    should(...args) {
+      const oQB = new QueryBuilder();
+      return oQB.should(...args);
     },
-    must: function() {
-      var oQB = new QueryBuilder();
-      return oQB.must.apply(oQB, arguments);
+    must(...args) {
+      const oQB = new QueryBuilder();
+      return oQB.must(...args);
     },
-    filter: function() {
-      var oQB = new QueryBuilder();
-      return oQB.filter.apply(oQB, arguments);
+    filter(...args) {
+      const oQB = new QueryBuilder();
+      return oQB.filter(...args);
     },
-    must_not: function() {
-      var oQB = new QueryBuilder();
-      return oQB.must_not.apply(oQB, arguments);
-    }
+    must_not(...args) {
+      const oQB = new QueryBuilder();
+      return oQB.must_not(...args);
+    },
   },
   type: {
-    term: function() {
-      var oST = new SearchType();
-      return oST.term.apply(oST, arguments);
+    term(...args) {
+      const oST = new SearchType();
+      return oST.term(...args);
     },
-    terms: function() {
-      var oST = new SearchType();
-      return oST.terms.apply(oST, arguments);
+    terms(...args) {
+      const oST = new SearchType();
+      return oST.terms(...args);
     },
-    exists: function() {
-      var oST = new SearchType();
-      return oST.exists.apply(oST, arguments);
+    exists(...args) {
+      const oST = new SearchType();
+      return oST.exists(...args);
     },
-    range: function() {
-      var oST = new SearchType();
-      return oST.range.apply(oST, arguments);
+    range(...args) {
+      const oST = new SearchType();
+      return oST.range(...args);
     },
-    wildcard : function(){
-      var oST = new SearchType();
-      return oST.wildcard.apply(oST, arguments);
+    wildcard(...args) {
+      const oST = new SearchType();
+      return oST.wildcard(...args);
     },
-    prefix : function(){
-      var oST = new SearchType();
-      return oST.prefix.apply(oST, arguments);
+    prefix(...args) {
+      const oST = new SearchType();
+      return oST.prefix(...args);
     },
-    nested : function(){
-      var oST = new SearchType();
-      return oST.nested.apply(oST, arguments);
+    nested(...args) {
+      const oST = new SearchType();
+      return oST.nested(...args);
     },
-    geo : function(){
-      var oST = new SearchType();
-      return oST.geo.apply(oST, arguments);
-    }
+    geo(...args) {
+      const oST = new SearchType();
+      return oST.geo(...args);
+    },
   },
   agg: {
-    average: function(p_sName) {
-      return function() {
-        var oST = new AggregationType(p_sName);
-        return oST.average.apply(oST, arguments);
-      }
+    average(sName) {
+      return (...args) => {
+        const oST = new AggregationType(sName);
+        return oST.average(...args);
+      };
     },
-    cardinality: function(p_sName) {
-      return function() {
-        var oST = new AggregationType(p_sName);
-        return oST.cardinality.apply(oST, arguments);
-      }
+    cardinality(sName) {
+      return (...args) => {
+        const oST = new AggregationType(sName);
+        return oST.cardinality(...args);
+      };
     },
-    extended_stats: function(p_sName) {
-      return function() {
-        var oST = new AggregationType(p_sName);
-        return oST.extended_stats.apply(oST, arguments);
-      }
+    extended_stats(sName) {
+      return (...args) => {
+        const oST = new AggregationType(sName);
+        return oST.extended_stats(...args);
+      };
     },
-    maximum: function(p_sName) {
-      return function() {
-        var oST = new AggregationType(p_sName);
-        return oST.maximum.apply(oST, arguments);
-      }
+    maximum(sName) {
+      return (...args) => {
+        const oST = new AggregationType(sName);
+        return oST.maximum(...args);
+      };
     },
-    minimum: function(p_sName) {
-      return function() {
-        var oST = new AggregationType(p_sName);
-        return oST.minimum.apply(oST, arguments);
-      }
+    minimum(sName) {
+      return (...args) => {
+        const oST = new AggregationType(sName);
+        return oST.minimum(...args);
+      };
     },
-    sum: function(p_sName) {
-      return function() {
-        var oST = new AggregationType(p_sName);
-        return oST.sum.apply(oST, arguments);
-      }
+    sum(sName) {
+      return (...args) => {
+        const oST = new AggregationType(sName);
+        return oST.sum(...args);
+      };
     },
-    value_count: function(p_sName) {
-      return function() {
-        var oST = new AggregationType(p_sName);
-        return oST.value_count.apply(oST, arguments);
-      }
+    value_count(sName) {
+      return (...args) => {
+        const oST = new AggregationType(sName);
+        return oST.value_count(...args);
+      };
     },
-    terms: function(p_sName,p_oOptions) {
-      return function() {
-        var oST = new AggregationType(p_sName);
-        return oST.terms.apply(oST, arguments);
-      }
+    terms(sName) {
+      return (...args) => {
+        const oST = new AggregationType(sName);
+        return oST.terms(...args);
+      };
     },
-    date_histogram: function(p_sName) {
-      return function() {
-        var oST = new AggregationType(p_sName);
-        return oST.date_histogram.apply(oST, arguments);
-      }
-    }
-  }
-}
+    date_histogram(sName) {
+      return (...args) => {
+        const oST = new AggregationType(sName);
+        return oST.date_histogram(...args);
+      };
+    },
+  },
+};

@@ -1,35 +1,30 @@
-'use strict'
+const Hit = require('./hit');
+const Aggregation = require('./aggregation');
 
-var Hit = require("./hit")
-var Aggregation = require("./aggregation")
-
-var Response = function(p_oResponse){
-  this.oResponse = p_oResponse;
+function Response(oResponse) {
+  this.oResponse = oResponse;
 }
 
 Response.prototype = {
-  count : function(){
-    if(!this.oResponse.hits)
-      return Promise.resolve(this.oResponse.found?1:0);
+  count() {
+    if (!this.oResponse.hits) return Promise.resolve(this.oResponse.found ? 1 : 0);
 
     return Promise.resolve(this.oResponse.hits.total);
   },
-  result: function(){
-    if(this.oResponse.found){
-      return Promise.resolve(new Hit(this.oResponse))
-    }else{
-      return Promise.resolve(false)
+  result() {
+    if (this.oResponse.found) {
+      return Promise.resolve(new Hit(this.oResponse));
     }
+    return Promise.resolve(false);
   },
-  results: function(){
-    return Promise.resolve(this.oResponse.hits.hits.map(function(o){return new Hit(o)}))
+  results() {
+    return Promise.resolve(this.oResponse.hits.hits.map(o => new Hit(o)));
   },
-  agg: function(p_sName){
-    if(!this.oResponse.aggregations || !this.oResponse.aggregations[p_sName])
-      return false;
+  agg(sName) {
+    if (!this.oResponse.aggregations || !this.oResponse.aggregations[sName]) return false;
 
-    return new Aggregation(this.oResponse.aggregations[p_sName],this.oResponse.aggregations.pattern.getByName(p_sName));
-  }
-}
+    return new Aggregation(this.oResponse.aggregations[sName], this.oResponse.aggregations.pattern.getByName(sName));
+  },
+};
 
 module.exports = Response;

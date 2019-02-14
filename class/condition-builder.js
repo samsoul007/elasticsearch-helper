@@ -1,24 +1,22 @@
-'use strict'
-
-var ConditionBuilder = function(p_sName){
+function ConditionBuilder(sName) {
   this.arroConditions = [];
-  this.conditionName = p_sName;
+  this.conditionName = sName;
 }
 
 ConditionBuilder.prototype = {
-  getName : function(){
+  getName() {
     return this.conditionName;
   },
-  add : function(p_oType){
-    this.arroConditions.push(p_oType);
+  add(oType) {
+    this.arroConditions.push(oType);
     return this;
   },
-  render: function(){
+  render() {
     return {
       name: this.conditionName,
-      conditions: this.arroConditions.map(function(o){return o.render()})
-    }
-  }
-}
+      conditions: this.arroConditions.map(o => o.render()),
+    };
+  },
+};
 
 module.exports = ConditionBuilder;

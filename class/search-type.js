@@ -1,94 +1,86 @@
-'use strict'
-
-var QueryBuilder = require("./query-builder")
-
-
-var SearchType = function(){
+function SearchType() {
   this.sKey = false;
   this.uValue = false;
   this.sType = false;
 }
 
 SearchType.prototype = {
-  _setValues : function(p_sType,p_sKey,p_uValue){
-    this.sKey = p_sKey;
-    this.uValue = p_uValue;
-    this.sType = p_sType;
+  _setValues(sType, sKey, uValue) {
+    this.sKey = sKey;
+    this.uValue = uValue;
+    this.sType = sType;
   },
-  term : function(p_sKey,p_sValue){
-    if(p_sValue.constructor === Array)
-      throw "cannot to be an array, use terms";
+  term(sKey, sValue) {
+    if (sValue.constructor === Array) throw new Error('cannot to be an array, use terms');
 
-    this._setValues("term",p_sKey,p_sValue)
+    this._setValues('term', sKey, sValue);
     return this;
   },
-  exists: function(p_sKey){
-    this._setValues("exists","field",p_sKey)
+  exists(sKey) {
+    this._setValues('exists', 'field', sKey);
     return this;
   },
-  range: function(p_sKey,p_oRange){
-    this._setValues("range",p_sKey,p_oRange)
+  range(sKey, oRange) {
+    this._setValues('range', sKey, oRange);
     return this;
   },
-  terms : function(p_sKey,p_arrsValue){
-    if(p_arrsValue.constructor !== Array)
-      throw "needs to be an array";
+  terms(sKey, arrsValue) {
+    if (arrsValue.constructor !== Array) throw new Error('needs to be an array');
 
-    this._setValues("terms",p_sKey,p_arrsValue)
+    this._setValues('terms', sKey, arrsValue);
     return this;
   },
-  wildcard: function(p_sKey,p_sValue){
-    this._setValues("wildcard",p_sKey,p_sValue)
+  wildcard(sKey, sValue) {
+    this._setValues('wildcard', sKey, sValue);
     return this;
   },
-  prefix: function(p_sKey,p_sValue){
-    this._setValues("prefix",p_sKey,p_sValue)
+  prefix(sKey, sValue) {
+    this._setValues('prefix', sKey, sValue);
     return this;
   },
-  nested: function(p_sKey,oQB){
-    this._setValues("nested",p_sKey,oQB)
+  nested(sKey, oQB) {
+    this._setValues('nested', sKey, oQB);
 
     return this;
   },
-  geo: function(p_sKey,p_oPoint,p_sDistance,p_sDistanceType){
-    if(p_sDistanceType && (p_sDistanceType !== "arc" || p_sDistanceType !== "plane"))
-      throw "Distance type needs to be 'arc' or 'plane'";
+  geo(sKey, oPoint, sDistance, sDistanceType) {
+    if (sDistanceType && (sDistanceType !== 'arc' || sDistanceType !== 'plane')) throw new Error("Distance type needs to be 'arc' or 'plane'");
 
-    this._setValues("geo_distance",p_sKey,{
-      distance: p_sDistance,
-      type: p_sDistanceType,
-      point: p_oPoint
-    })
+    this._setValues('geo_distance', sKey, {
+      distance: sDistance,
+      type: sDistanceType,
+      point: oPoint,
+    });
     return this;
   },
-  render: function(){
-    var oObj = {}
+  render() {
+    const oObj = {};
 
-    switch(this.sType){
-      case "geo_distance":
+    switch (this.sType) {
+      case 'geo_distance':
         oObj[this.sType] = {
-          "distance" : this.uValue.distance,
-          [this.sKey] : this.uValue.point
-        }
-
-        if(this.uValue.type){
-          oObj[this.sType].distance_type = this.uValue.type
-        }
-      break;
-      case "nested":
-        oObj[this.sType] = {
-          path : this.sKey,
-          query: this.uValue.render()
+          distance: this.uValue.distance,
+          [this.sKey]: this.uValue.point,
         };
-      break;
+
+        if (this.uValue.type) {
+          oObj[this.sType].distance_type = this.uValue.type;
+        }
+        break;
+      case 'nested':
+        oObj[this.sType] = {
+          path: this.sKey,
+          query: this.uValue.render(),
+        };
+        break;
       default:
         oObj[this.sType] = {};
         oObj[this.sType][this.sKey] = this.uValue;
-      break;
+        break;
     }
 
     return oObj;
-  }
-}
+  },
+};
 
 module.exports = SearchType;
