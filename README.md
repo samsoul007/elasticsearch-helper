@@ -375,6 +375,20 @@ NOTE: not all types are currently implemented. Others will be added over time.
   ES.type.prefix("name.first_name","josh");
 ```
 
+* query string
+
+More info: https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html
+
+```javascript
+  ES.type.query_string("text to search" [,"option object"]);
+  // ex:
+  ES.type.query_string("*jabba*",{
+    "fields": [ "field1" ],
+    "analyze_wildcard": true
+  });
+```
+
+
 * nested
 
 Nested is an advanced feature of Elasticsearch allowing to do queries on sub-documents such as an array of objects. This type require that a specific mapping being setup. For more information: https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-nested-query.html

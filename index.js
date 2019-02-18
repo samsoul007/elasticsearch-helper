@@ -61,45 +61,38 @@ const getClient = (...args) => {
   return false;
 };
 
-const indexes = (sESClient) => {
-  return Promise.resolve()
-  .then(function(){
-    if(sESClient)
-      return getClient(sESClient)
+const indexes = sESClient => Promise.resolve()
+  .then(() => {
+    if (sESClient) return getClient(sESClient);
 
     return getClient();
   })
-  .then(function(oClient){
-    if(!oClient)
-      return Promise.reject(new Error("Cannot find client"))
+  .then((oClient) => {
+    if (!oClient) return Promise.reject(new Error('Cannot find client'));
 
     return oClient.cat.indices()
-    .then(function(resp){
-      return resp.split("\n");
-    })
-    .then(function(arrsIndexes){
-      const columns = ["health","status","index","uuid",null,null,"docs.count","docs.deleted","store.size","pri.store.size"]
-      const parse = [null,null,null,null,null,null,parseInt,parseInt,null,null];
-      const arroIndexes = [];
+      .then(resp => resp.split('\n'))
+      .then((arrsIndexes) => {
+        const columns = ['health', 'status', 'index', 'uuid', null, null, 'docs.count', 'docs.deleted', 'store.size', 'pri.store.size'];
+        const parse = [null, null, null, null, null, null, parseInt, parseInt, null, null];
+        const arroIndexes = [];
 
-      for(let i = 0 ; i < arrsIndexes.length; i+=1){
-        if(arrsIndexes[i].trim() === "")
-          continue;
-
-        const arrsLine = arrsIndexes[i].replace(/\s\s+/g, ' ').split(" ");
-        const oIndex = {}
-        for(let j=0; j < arrsLine.length ; j+=1){
-          if(columns[j]){
-            oIndex[columns[j]] = parse[j]? parse[j](arrsLine[j]):arrsLine[j];
+        for (let i = 0; i < arrsIndexes.length; i += 1) {
+          if (arrsIndexes[i].trim() !== '') {
+            const arrsLine = arrsIndexes[i].replace(/\s\s+/g, ' ').split(' ');
+            const oIndex = {};
+            for (let j = 0; j < arrsLine.length; j += 1) {
+              if (columns[j]) {
+                oIndex[columns[j]] = parse[j] ? parse[j](arrsLine[j]) : arrsLine[j];
+              }
+            }
+            arroIndexes.push(oIndex);
           }
         }
-        arroIndexes.push(oIndex)
-      }
 
-      return arroIndexes;
-    })
-  })
-}
+        return arroIndexes;
+      });
+  });
 
 let onErrorMethod = err => err;
 
@@ -286,7 +279,7 @@ Elasticsearch.prototype = {
       });
     }));
   },
-  mappings(){
+  mappings() {
     return this._getClient().indices.getMapping({
       index: this.sIndex,
     });
@@ -561,6 +554,10 @@ module.exports = {
     prefix(...args) {
       const oST = new SearchType();
       return oST.prefix(...args);
+    },
+    query_string(...args) {
+      const oST = new SearchType();
+      return oST.query_string(...args);
     },
     nested(...args) {
       const oST = new SearchType();

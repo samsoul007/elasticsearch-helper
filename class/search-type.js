@@ -1,3 +1,5 @@
+const _ = require('lodash');
+
 function SearchType() {
   this.sKey = false;
   this.uValue = false;
@@ -38,6 +40,11 @@ SearchType.prototype = {
     this._setValues('prefix', sKey, sValue);
     return this;
   },
+  query_string(sSearch, oQB) {
+    this._setValues('query_string', sSearch, oQB);
+
+    return this;
+  },
   nested(sKey, oQB) {
     this._setValues('nested', sKey, oQB);
 
@@ -57,6 +64,12 @@ SearchType.prototype = {
     const oObj = {};
 
     switch (this.sType) {
+      case 'query_string':
+        oObj[this.sType] = _.assignIn({
+          query: this.sKey,
+        }, this.uValue);
+
+        break;
       case 'geo_distance':
         oObj[this.sType] = {
           distance: this.uValue.distance,
