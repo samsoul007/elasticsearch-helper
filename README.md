@@ -221,7 +221,7 @@ For those example we will use the query variable 'q':
 
 ```javascript
 // initialise query
-var q = ES.query("Index1","Type1");
+const q = ES.query("Index1","Type1");
 ```
 
 ### Single Document
@@ -245,7 +245,7 @@ q.id("ID")
 ```javascript
 q.id("ID")
  .delete()
-  .then(function(hit){
+  .then(function(success){
   // return true
 })
 ```
@@ -428,9 +428,10 @@ Geo distance requires a few parameters:
 ```javascript
 q.must(
   // Types
-).run().then(function(hits){
+).run()
+.then(function(hits){
   // return array of hits objects
-  var hit = hits[0];
+  const hit = hits[0];
   console.log(hit.id()) // get Document ID
   console.log(hit.index()) // get Document index
   console.log(hit.type()) // get Document type
@@ -445,8 +446,8 @@ Delete by query is only avalaible on Elasticsearch 5.X
 ```javascript
 q.must(
   // Types
-).delete().then(function(hits){
-  // return array of hits objects
+).delete().then(function(success){
+  // return true
 })
 ```
 
@@ -476,22 +477,23 @@ q.aggs(
       ES.agg.terms("first_name")("data.first_name")
     )
   // Add more aggregations
-).run()
+)
+.run()
 .then(function(response){
   // retrieve the "created_date" aggregation
-  var arrayAggList = response.agg("created_date")
-  var arrayValues = arrayAggList.values() // return an array of values objects. array types values will depend on the aggregation type
+  const arrayAggList = response.agg("created_date")
+  const arrayValues = arrayAggList.values() // return an array of values objects. array types values will depend on the aggregation type
 
-  var firstValue = arrayValues[0];
-  var valueID = firstValue.id(); // key of the value. If it is a date_histogram type it will be a moment object
-  var valueData = firstValue.data(); // value of the aggregation for this key.
+  const firstValue = arrayValues[0];
+  const valueID = firstValue.id(); // key of the value. If it is a date_histogram type it will be a moment object
+  const valueData = firstValue.data(); // value of the aggregation for this key.
 
 
   // To retrieve a child aggregation:
   // Note: Each parent aggregation value has its own aggregation so you will have to loop through to get the child aggregation
 
-  var arrayChildAggList = arrayAggList.agg("first_name");
-  for(var parentKeyvalue in arrayChildAggList){
+  const arrayChildAggList = arrayAggList.agg("first_name");
+  for(let parentKeyvalue in arrayChildAggList){
     arrayChildAggList[parentKeyvalue].values().forEach(function(value){
       console.log(parentKeyvalue, value.id(),value.data());
     })
@@ -610,11 +612,11 @@ ES.query("Index1","Type1")
 .use("client1")
 .size(10)
 .must(
-  ES.addType().term("name","John"),
-  ES.addType().terms("lastname",["Smith","Wake"])
+  ES.type.term("name","John"),
+  ES.type.terms("lastname",["Smith","Wake"])
 )
 .must_not(
-  ES.addType().range("age",{
+  ES.type.range("age",{
     lte:20,
     gte:30
   })
@@ -652,18 +654,18 @@ ES.Query("user")
 .run()
 .then(function(response){
   // retrieve the "created_date" aggregation
-  var arrayAggList = response.agg("created_date")
-  var arrayValues = arrayAggList.values() // return an array of values objects. array types values will depend on the aggregation type
+  const arrayAggList = response.agg("created_date")
+  const arrayValues = arrayAggList.values() // return an array of values objects. array types values will depend on the aggregation type
 
-  var firstValue = arrayValues[0];
-  var valueID = firstValue.id(); // key of the value. If it is a date_histogram type it will be a moment object
-  var valueData = firstValue.data(); // value of the aggregation for this key.
+  const firstValue = arrayValues[0];
+  const valueID = firstValue.id(); // key of the value. If it is a date_histogram type it will be a moment object
+  const valueData = firstValue.data(); // value of the aggregation for this key.
 
 
   // To retrieve a child aggregation:
   // Note: Each parent aggregation value has its own aggregation so you will have to loop through to get the child aggregation
-  var arrayChildAggList = arrayAggList.agg("first_name");
-  for(var parentKeyvalue in arrayChildAggList){
+  const arrayChildAggList = arrayAggList.agg("first_name");
+  for(let parentKeyvalue in arrayChildAggList){
     arrayChildAggList[parentKeyvalue].values().forEach(function(value){
       console.log(parentKeyvalue, value.id(),value.data());
     })

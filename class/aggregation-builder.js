@@ -20,7 +20,7 @@ AggregationBuilder.prototype = {
     return this;
   },
   add(...args) {
-    return this._add(...args);
+    return this._add(args);
   },
   render() {
     const self = this;

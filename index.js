@@ -374,7 +374,7 @@ Elasticsearch.prototype = {
     return this;
   },
   aggs(...args) {
-    this.oAB.add.apply(this.oAB, ...args);
+    this.oAB.add(...args);
     return this;
   },
   delete() {
