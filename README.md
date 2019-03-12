@@ -430,6 +430,8 @@ q.must(
   // Types
 ).run()
 .then(function(hits){
+  const total  = hits.total //get the total number of documents matching the query
+  const length = hits.length //get the total number of documents returned by the query
   // return array of hits objects
   const hit = hits[0];
   console.log(hit.id()) // get Document ID

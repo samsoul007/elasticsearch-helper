@@ -18,7 +18,12 @@ Response.prototype = {
     return Promise.resolve(false);
   },
   results() {
-    return Promise.resolve(this.oResponse.hits.hits.map(o => new Hit(o)));
+    return Promise.resolve()
+    .then(() => {
+      const arroHits = this.oResponse.hits.hits.map(o => new Hit(o));
+      arroHits.total = this.oResponse.hits.total;
+      return arroHits
+    });
   },
   agg(sName) {
     if (!this.oResponse.aggregations || !this.oResponse.aggregations[sName]) return false;
