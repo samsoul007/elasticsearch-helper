@@ -44,6 +44,8 @@ const AddClient = (...args) => {
     host: sHost,
     // log: 'trace'
   });
+
+  oESClientList[sName].host = sHost;
 };
 
 /**
@@ -55,7 +57,8 @@ const AddClient = (...args) => {
 const getClient = (...args) => {
   if (args.length === 0 && oESClientList[sDefaultName]) {
     return oESClientList[sDefaultName];
-  } if (oESClientList[args[0]]) {
+  }
+  if (oESClientList[args[0]]) {
     return oESClientList[args[0]];
   }
   return false;
@@ -396,99 +399,110 @@ Elasticsearch.prototype = {
 
     return this._generateQuery()
       .then((oQueryData) => {
-        if (bLog) console.log(JSON.stringify(oQueryData, null, 2)); // eslint-disable-line no-console
+        return Promise.resolve()
+          .then(() => {
+            if (bLog) console.log(JSON.stringify(oQueryData, null, 2)); // eslint-disable-line no-console
 
-        const oQuery = oQueryData.query;
-        const sType = oQueryData.type;
+            const oQuery = oQueryData.query;
+            const sType = oQueryData.type;
 
-        if (sType === 'bulk') {
-          const arroDataBulk = _.chunk(self.arroBulk, 500);
+            if (sType === 'bulk') {
+              const arroDataBulk = _.chunk(self.arroBulk, 500);
 
-          const arroPromises = [];
-          for (let i = 0; i < arroDataBulk.length; i += 1) {
-            arroPromises.push((arroBulk => () => new Promise(((resolve, reject) => {
-              self.oESClient.bulk({
-                body: arroBulk,
-              }, (err) => {
-                if (err) return reject(err);
+              const arroPromises = [];
+              for (let i = 0; i < arroDataBulk.length; i += 1) {
+                arroPromises.push((arroBulk => () => new Promise(((resolve, reject) => {
+                  self.oESClient.bulk({
+                    body: arroBulk,
+                  }, (err) => {
+                    if (err) return reject(err);
 
-                return resolve(true);
-              });
-            })))(arroDataBulk[i]));
-          }
-          return promiseSerie(arroPromises);
-        }
-
-        return new Promise(((resolve, reject) => {
-          // if size is more than 5000 we do an automatic scroll
-          if (sType === 'search' && oQuery.body.size && oQuery.body.size > 5000 && !self.oAB.count()) {
-            const arroData = [];
-
-            oQuery.scroll = '1m';
-            oQuery.size = 5000;
-
-            const oESStream = new ElasticsearchScrollStream(self.oESClient, oQuery, ['_id', '_index', '_type']);
-
-            oESStream.on('data', (data) => {
-              const oCurrentDoc = JSON.parse(data.toString());
-
-              const { _id, _index, _type } = oCurrentDoc;
-
-              delete oCurrentDoc._id;
-              delete oCurrentDoc._index;
-              delete oCurrentDoc._type;
-
-              arroData.push({
-                _id,
-                _index,
-                _type,
-                _source: oCurrentDoc,
-              });
-            });
-
-            oESStream.on('end', () => {
-              const response = {
-                hits: {
-                  total: arroData.length,
-                  hits: arroData,
-                },
-              };
-
-              resolve((new Response(response)).results());
-            });
-
-            oESStream.on('error', (err) => {
-              reject(err);
-            });
-          } else {
-            self.oESClient[sType](oQuery, (err, response) => {
-              if (err) {
-                if (sType === 'get' && err.status === 404) {
-                  return resolve(false);
-                }
-                return reject(err);
+                    return resolve(true);
+                  });
+                })))(arroDataBulk[i]));
               }
+              return promiseSerie(arroPromises);
+            }
 
-              switch (sType) {
-                case 'search':
-                  if (response.aggregations) {
-                    response.aggregations.pattern = self.oAB;
-                    return resolve(new Response(response));
+            return new Promise(((resolve, reject) => {
+              // if size is more than 5000 we do an automatic scroll
+              if (sType === 'search' && oQuery.body.size && oQuery.body.size > 5000 && !self.oAB.count()) {
+                const arroData = [];
+
+                oQuery.scroll = '1m';
+                oQuery.size = 5000;
+
+                const oESStream = new ElasticsearchScrollStream(self.oESClient, oQuery, ['_id', '_index', '_type']);
+
+                oESStream.on('data', (data) => {
+                  const oCurrentDoc = JSON.parse(data.toString());
+
+                  const {
+                    _id,
+                    _index,
+                    _type
+                  } = oCurrentDoc;
+
+                  delete oCurrentDoc._id;
+                  delete oCurrentDoc._index;
+                  delete oCurrentDoc._type;
+
+                  arroData.push({
+                    _id,
+                    _index,
+                    _type,
+                    _source: oCurrentDoc,
+                  });
+                });
+
+                oESStream.on('end', () => {
+                  const response = {
+                    hits: {
+                      total: arroData.length,
+                      hits: arroData,
+                    },
+                  };
+
+                  resolve((new Response(response)).results());
+                });
+
+                oESStream.on('error', (err) => {
+                  reject(err);
+                });
+              } else {
+                self.oESClient[sType](oQuery, (err, response) => {
+                  if (err) {
+                    if (sType === 'get' && err.status === 404) {
+                      return resolve(false);
+                    }
+                    return reject(err);
                   }
 
-                  return resolve((new Response(response)).results());
-                case 'get':
-                  return resolve((new Response(response)).result());
-                case 'count':
-                  return resolve(response.count);
-                default:
-                  return resolve(self.oBody || self.oDoc || self.bDelete || self.bEmptyIndex);
+                  switch (sType) {
+                    case 'search':
+                      if (response.aggregations) {
+                        response.aggregations.pattern = self.oAB;
+                        return resolve(new Response(response));
+                      }
+
+                      return resolve((new Response(response)).results());
+                    case 'get':
+                      return resolve((new Response(response)).result());
+                    case 'count':
+                      return resolve(response.count);
+                    default:
+                      return resolve(self.oBody || self.oDoc || self.bDelete || self.bEmptyIndex);
+                  }
+                });
               }
-            });
-          }
-        }));
-      })
-      .catch(err => Promise.reject(self.onErrorMethod(err)));
+            }));
+          })
+          .catch(err => {
+            err.query = oQueryData;
+            err.client = self.oESClient.host;
+            return Promise.reject(self.onErrorMethod(err))
+          });
+      });
   },
 };
 
