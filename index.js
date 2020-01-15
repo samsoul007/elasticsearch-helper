@@ -107,7 +107,7 @@ const promiseSerie = (arroPromises) => {
   }, p);
 };
 
-function Elasticsearch(sIndex, sType) {
+const Elasticsearch = function(sIndex, sType) {
   this.oESClient = false;
 
   this.sIndex = sIndex;
@@ -158,44 +158,42 @@ Elasticsearch.prototype = {
     return this.oESClient || oESClientList.default;
   },
   _generateQuery() {
-    const self = this;
-
     return new Promise(((resolve, reject) => {
       let sType = 'search';
       const oQuery = {
-        index: self.sIndex,
+        index: this.sIndex,
       };
 
-      if (self.sType) oQuery.type = self.sType;
+      if (this.sType) oQuery.type = this.sType;
 
       // Dealing with bulk
-      if (self.arroBulk.length) {
-        if (self.sID) {
+      if (this.arroBulk.length) {
+        if (this.sID) {
           return reject(new Error('You cannot use id() with bulk()'));
         }
 
-        oQuery.body = self.arroBulk;
+        oQuery.body = this.arroBulk;
         sType = 'bulk';
       } else {
-        if (self.sID) {
-          if (!self.sType) return reject(new Error('You need to set a type to search or update by ID'));
+        if (this.sID) {
+          if (!this.sType) return reject(new Error('You need to set a type to search or update by ID'));
 
-          oQuery.id = self.sID;
+          oQuery.id = this.sID;
           sType = 'get';
         }
 
-        if (self.bDelete) {
-          if (self.sID) sType = 'delete';
+        if (this.bDelete) {
+          if (this.sID) sType = 'delete';
           else {
-            if (!self.bHasCondition) return reject(new Error('You need a request body'));
+            if (!this.bHasCondition) return reject(new Error('You need a request body'));
 
             oQuery.body = {
-              query: self.oQB.render(),
+              query: this.oQB.render(),
             };
 
             sType = 'deleteByQuery';
           }
-        } else if (self.bEmptyIndex) {
+        } else if (this.bEmptyIndex) {
           oQuery.body = {
             query: {
               match_all: {},
@@ -203,42 +201,42 @@ Elasticsearch.prototype = {
           };
 
           sType = 'deleteByQuery';
-        } else if (self.oDoc) {
-          if (!self.sID) return reject(new Error('You need to set an id to update'));
+        } else if (this.oDoc) {
+          if (!this.sID) return reject(new Error('You need to set an id to update'));
 
           oQuery.body = {
-            doc: self.oDoc,
+            doc: this.oDoc,
           };
 
-          if (self.upsert) oQuery.body.doc_as_upsert = true;
+          if (this.upsert) oQuery.body.doc_as_upsert = true;
 
           sType = 'update';
-        } else if (self.bCount) {
+        } else if (this.bCount) {
           oQuery.body = {
-            query: self.oQB.render(),
+            query: this.oQB.render(),
           };
           sType = 'count';
-        } else if (self.oBody) {
-          if (!self.sID) return reject(new Error('You need to set an id to index'));
+        } else if (this.oBody) {
+          if (!this.sID) return reject(new Error('You need to set an id to index'));
 
-          oQuery.body = self.oBody;
+          oQuery.body = this.oBody;
           sType = 'index';
-        } else if (!self.sID) {
+        } else if (!this.sID) {
           oQuery.body = {
-            query: self.oQB.render(),
+            query: this.oQB.render(),
           };
 
-          oQuery.body.size = self.sizeResult || 10;
+          oQuery.body.size = this.sizeResult || 10;
 
-          if (self.iFrom) oQuery.body.from = self.iFrom;
+          if (this.iFrom) oQuery.body.from = this.iFrom;
 
-          oQuery.body._source = self.arrsFields;
-          oQuery.body.sort = self.arroSorts;
+          oQuery.body._source = this.arrsFields;
+          oQuery.body.sort = this.arroSorts;
         }
 
-        if (sType === 'search' && self.oAB.count()) {
+        if (sType === 'search' && this.oAB.count()) {
           oQuery.body.size = 0;
-          oQuery.body.aggs = self.oAB.render();
+          oQuery.body.aggs = this.oAB.render();
         }
       }
 
@@ -268,50 +266,88 @@ Elasticsearch.prototype = {
     this.bHasCondition = true;
     return this;
   },
-  deleteIndex() {
-    if (this.sIndex.indexOf('*') !== -1 || this.sIndex.split(',').length > 1) throw new Error('For security reasons you cannot delete multiple indexes');
+  index() {
 
-    const self = this;
-    return new Promise(((resolve, reject) => {
-      self._getClient().indices.delete({
-        index: self.sIndex,
-      }, (err, response) => {
-        if (err) return reject(err);
+    return {
+      touch: () =>  {
+        if(!this.sType) return Promise.reject(new Error(`index type missing`))
 
-        return resolve(response.acknowledged);
-      });
-    }));
-  },
-  mappings() {
-    return this._getClient().indices.getMapping({
-      index: this.sIndex,
-    });
-  },
-  empty() {
-    this.bEmptyIndex = true;
-    return this.run();
-  },
-  exists() {
-    return this._getClient().indices.exists({
-      index: this.sIndex,
-    });
-  },
-  copyTo(oQueryObj) {
-    if (this._hasAggregation()) throw new Error('You cannot copy while doing aggregation');
+        return this.index().exists(this.sIndex)
+        .then(exists => {
+          if(exists)
+            return Promise.resolve(true)
 
-    if (!this.sizeResult) {
-      this.sizeResult = 50000000;
-    }
+          return this.id("____test_____").body({}).run()
+          .then(() => {
+            return this.id("____test_____").delete()
+          })
+          .then(() => true);
+        })
+      },
+      delete: () => {
+        if (this.sIndex.indexOf('*') !== -1 || this.sIndex.split(',').length > 1) return Promise.reject(new Error('For security reasons you cannot delete multiple indexes'));
 
-    return this.run()
-      .then((arroHit) => {
-        for (let i = 0; i < arroHit.length; i += 1) {
-          const oHit = arroHit[i];
-          oQueryObj.bulk(oHit.data(), oHit.id(), oHit.type());
+        return new Promise(((resolve, reject) => {
+          this._getClient().indices.delete({
+            index: this.sIndex,
+          }, (err, response) => {
+            if (err) return reject(err);
+
+            return resolve(response.acknowledged);
+          });
+        }))
+        .catch(err => Promise.reject(this.onErrorMethod(err)))
+      },
+      mappings: () => {
+        return this._getClient().indices.getMapping({
+          index: this.sIndex,
+        })
+        .catch(err => Promise.reject(this.onErrorMethod(err)))
+      },
+      empty: () => {
+        this.bEmptyIndex = true;
+        return this.run();
+      },
+      exists: () => {
+        return this._getClient().indices.exists({
+          index: this.sIndex,
+        })
+        .catch(err => Promise.reject(this.onErrorMethod(err)))
+      },
+      copyTo: (oQueryObj) => {
+        if (this._hasAggregation()) throw new Error('You cannot copy while doing aggregation');
+
+        if (!this.sizeResult) {
+          this.sizeResult = 50000000;
         }
 
-        return oQueryObj.run();
-      });
+        return this.run()
+          .then((arroHit) => {
+            for (let i = 0; i < arroHit.length; i += 1) {
+              const oHit = arroHit[i];
+              oQueryObj.bulk(oHit.data(), oHit.id(), oHit.type());
+            }
+
+            return oQueryObj.run();
+          });
+      }
+    }
+
+  },
+  deleteIndex() {
+    return this.index().delete();
+  },
+  mappings() {
+    return this.index().mappings();
+  },
+  empty() {
+    return this.index().empty();
+  },
+  exists() {
+    return this.index().exists();
+  },
+  copyTo(...args) {
+    return this.index().copyTo(...args);
   },
   bulk(oData, sId, sType) {
     if (!this.sType && !sType) throw new Error('You need to set a type when you create a query or when you call the bulk() method to copy');
@@ -389,8 +425,6 @@ Elasticsearch.prototype = {
     return this.run();
   },
   run(bLog) {
-    const self = this;
-
     this.oESClient = this._getClient();
 
     if (!this.oESClient) {
@@ -398,111 +432,110 @@ Elasticsearch.prototype = {
     }
 
     return this._generateQuery()
-      .then((oQueryData) => {
-        return Promise.resolve()
-          .then(() => {
-            if (bLog) console.log(JSON.stringify(oQueryData, null, 2)); // eslint-disable-line no-console
+      .then(oQueryData => Promise.resolve()
+        .then(() => {
+          if (bLog) console.log(JSON.stringify(oQueryData, null, 2)); // eslint-disable-line no-console
 
-            const oQuery = oQueryData.query;
-            const sType = oQueryData.type;
+          const oQuery = oQueryData.query;
+          const sType = oQueryData.type;
 
-            if (sType === 'bulk') {
-              const arroDataBulk = _.chunk(self.arroBulk, 500);
+          if (sType === 'bulk') {
+            const arroDataBulk = _.chunk(this.arroBulk, 500);
 
-              const arroPromises = [];
-              for (let i = 0; i < arroDataBulk.length; i += 1) {
-                arroPromises.push((arroBulk => () => new Promise(((resolve, reject) => {
-                  self.oESClient.bulk({
-                    body: arroBulk,
-                  }, (err) => {
-                    if (err) return reject(err);
+            const arroPromises = [];
+            for (let i = 0; i < arroDataBulk.length; i += 1) {
+              arroPromises.push((arroBulk => () => new Promise(((resolve, reject) => {
+                this.oESClient.bulk({
+                  body: arroBulk,
+                }, (err) => {
+                  if (err) return reject(err);
 
-                    return resolve(true);
-                  });
-                })))(arroDataBulk[i]));
-              }
-              return promiseSerie(arroPromises);
+                  return resolve(true);
+                });
+              })))(arroDataBulk[i]));
             }
+            return promiseSerie(arroPromises);
+          }
 
-            return new Promise(((resolve, reject) => {
-              // if size is more than 5000 we do an automatic scroll
-              if (sType === 'search' && oQuery.body.size && oQuery.body.size > 5000 && !self.oAB.count()) {
-                const arroData = [];
+          return new Promise(((resolve, reject) => {
+            // if size is more than 5000 we do an automatic scroll
+            if (sType === 'search' && oQuery.body.size && oQuery.body.size > 5000 && !this.oAB.count()) {
+              const arroData = [];
 
-                oQuery.scroll = '1m';
-                oQuery.size = 5000;
+              oQuery.scroll = '1m';
+              oQuery.size = 5000;
 
-                const oESStream = new ElasticsearchScrollStream(self.oESClient, oQuery, ['_id', '_index', '_type']);
+              const oESStream = new ElasticsearchScrollStream(this.oESClient, oQuery, ['_id', '_index', '_type']);
 
-                oESStream.on('data', (data) => {
-                  const oCurrentDoc = JSON.parse(data.toString());
+              oESStream.on('data', (data) => {
+                const oCurrentDoc = JSON.parse(data.toString());
 
-                  const {
-                    _id,
-                    _index,
-                    _type
-                  } = oCurrentDoc;
+                const {
+                  _id,
+                  _index,
+                  _type,
+                } = oCurrentDoc;
 
-                  delete oCurrentDoc._id;
-                  delete oCurrentDoc._index;
-                  delete oCurrentDoc._type;
+                delete oCurrentDoc._id;
+                delete oCurrentDoc._index;
+                delete oCurrentDoc._type;
 
-                  arroData.push({
-                    _id,
-                    _index,
-                    _type,
-                    _source: oCurrentDoc,
-                  });
+                arroData.push({
+                  _id,
+                  _index,
+                  _type,
+                  _source: oCurrentDoc,
                 });
+              });
 
-                oESStream.on('end', () => {
-                  const response = {
-                    hits: {
-                      total: arroData.length,
-                      hits: arroData,
-                    },
-                  };
+              oESStream.on('end', () => {
+                const response = {
+                  hits: {
+                    total: arroData.length,
+                    hits: arroData,
+                  },
+                };
 
-                  resolve((new Response(response)).results());
-                });
+                resolve((new Response(response)).results());
+              });
 
-                oESStream.on('error', (err) => {
-                  reject(err);
-                });
-              } else {
-                self.oESClient[sType](oQuery, (err, response) => {
-                  if (err) {
-                    if (sType === 'get' && err.status === 404) {
-                      return resolve(false);
+              oESStream.on('error', (err) => {
+                reject(err);
+              });
+            } else {
+              this.oESClient[sType](oQuery, (err, response) => {
+                if (err) {
+                  if (sType === 'get' && err.status === 404) {
+                    return resolve(false);
+                  }
+                  return reject(err);
+                }
+
+                switch (sType) {
+                  case 'search':
+                    if (response.aggregations) {
+                      response.aggregations.pattern = this.oAB;
+                      return resolve(new Response(response));
                     }
-                    return reject(err);
-                  }
 
-                  switch (sType) {
-                    case 'search':
-                      if (response.aggregations) {
-                        response.aggregations.pattern = self.oAB;
-                        return resolve(new Response(response));
-                      }
-
-                      return resolve((new Response(response)).results());
-                    case 'get':
-                      return resolve((new Response(response)).result());
-                    case 'count':
-                      return resolve(response.count);
-                    default:
-                      return resolve(self.oBody || self.oDoc || self.bDelete || self.bEmptyIndex);
-                  }
-                });
-              }
-            }));
-          })
-          .catch(err => {
-            err.query = oQueryData;
-            err.client = self.oESClient.host;
-            return Promise.reject(self.onErrorMethod(err))
-          });
-      });
+                    return resolve((new Response(response)).results());
+                  case 'get':
+                    return resolve((new Response(response)).result());
+                  case 'count':
+                    return resolve(response.count);
+                  default:
+                    return resolve(this.oBody || this.oDoc || this.bDelete || this.bEmptyIndex);
+                }
+              });
+            }
+          }));
+        })
+        .catch((err) => {
+          const error = err;
+          error.query = oQueryData;
+          error.client = this.oESClient.host;
+          return Promise.reject(this.onErrorMethod(error));
+        }));
   },
 };
 
