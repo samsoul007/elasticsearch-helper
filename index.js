@@ -3,6 +3,7 @@ const ElasticsearchScrollStream = require('elasticsearch-scroll-stream');
 const _ = require('lodash');
 
 const Response = require('./class/response');
+const Hit = require('./class/hit');
 const QueryBuilder = require('./class/query-builder');
 const AggregationBuilder = require('./class/aggregation-builder');
 const SearchType = require('./class/search-type');
@@ -98,7 +99,7 @@ const indexes = sESClient => Promise.resolve()
   });
 
 let onErrorMethod = err => err;
-let onUpsertData = null
+const onUpsertData = []
 
 const promiseSerie = (arroPromises) => {
   const p = Promise.resolve();
@@ -151,7 +152,8 @@ Elasticsearch.prototype = {
   onUpsert(fFunction) {
     this.onUpsertData = {
       func: fFunction,
-      indexes: []
+      indexes: [],
+      excludedIndexes: []
     };
     return this;
   },
@@ -519,18 +521,25 @@ Elasticsearch.prototype = {
               .then(() => {
                 //Detect upsert;
                 if(["update", "index"].indexOf(sType) !== -1) {
-                  const data = this.onUpsertData || onUpsertData;
-                  if(data) {
-                    const {func, indexes} = data;
-                    
-                    if(!indexes.length || indexes.indexOf[this.sIndex] !== -1) {
+                  const data = this.onUpsertData || onUpsertData || [] ;
+
+                  data.forEach(d => {
+                    const {func, indexes, excludedIndexes} = d;
+
+                    if((!indexes.length || indexes.indexOf(this.sIndex) !== -1) && excludedIndexes.indexOf(this.sIndex) === -1) {
                       return new Elasticsearch(this.sIndex, this.sType).id(this.sID).run()
-                      .then(oHit => oHit ? oHit.data() : null)
-                      .then(oData => {
-                        func(oData, this.oBody || this.oDoc)
+                      .then(oHit => oHit ? oHit : null)
+                      .then(oldHit => {
+                        const oCurrentHit = new Hit({
+                          _id: this.sID,
+                          _type: this.sType,
+                          _index: this.sIndex,
+                          _source:  this.oBody || this.oDoc
+                        })
+                        func(oldHit, oCurrentHit)
                       })
                     }
-                  }
+                  })
                 }
               })
               .then(() => {
@@ -576,11 +585,36 @@ module.exports = {
   onError(fFuntion) {
     onErrorMethod = fFuntion;
   },
-  onUpsert(fFuntion, indexes) {
-    onUpsertData = {
-      func: fFuntion,
-      indexes: indexes || []
-    };
+  onUpsert(func, indexes = [], excludedIndexes = []) {
+    onUpsertData.push({
+      func,
+      indexes,
+      excludedIndexes
+    });
+  },
+  storeDocumentHistory(fromIndexes = [], toIndex) {
+    toIndex = toIndex || "historical_data"
+
+    onUpsertData.push({
+      func(before, after) {
+        const date = new Date()
+
+        new Elasticsearch(toIndex, "data")
+        .id(`${after.index()}_${after.type()}_${after.id()}_${date.getTime()}`)
+        .body({
+          index: after.index(),
+          id: after.id(),
+          type: after.type(),
+          data: JSON.stringify(after.data()),
+          metadata: {
+            dateAdded: date.toISOString()
+          }
+        })
+        .run(true)
+      },
+      indexes: fromIndexes,
+      excludedIndexes: [toIndex] //Avoid recursive detection,
+    });
   },
   AddClient,
   addClient: AddClient,
