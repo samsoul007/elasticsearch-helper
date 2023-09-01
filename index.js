@@ -530,13 +530,15 @@ Elasticsearch.prototype = {
                       return new Elasticsearch(this.sIndex, this.sType).id(this.sID).run()
                       .then(oHit => oHit ? oHit : null)
                       .then(oldHit => {
-                        const oCurrentHit = new Hit({
-                          _id: this.sID,
-                          _type: this.sType,
-                          _index: this.sIndex,
-                          _source:  this.oBody || this.oDoc
-                        })
-                        func(oldHit, oCurrentHit)
+                        if(oldHit && JSON.stringify(oldHit.data()) !== JSON.stringify(this.oBody || this.oDoc)) {
+                          const oCurrentHit = new Hit({
+                            _id: this.sID,
+                            _type: this.sType,
+                            _index: this.sIndex,
+                            _source:  this.oBody || this.oDoc
+                          })
+                          func(oldHit, oCurrentHit)
+                        }
                       })
                     }
                   })
