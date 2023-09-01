@@ -122,6 +122,7 @@ ES.query("Index1","Type1")
 ## Indexes
 
 **All index operations are under the index() method to avoid conflicts**
+
 **All methods return a promise.**
 
 We implemented some helpers based on what we were using a lot.
@@ -259,20 +260,23 @@ const q = ES.query("Index1","Type1");
 ### Single Document
 
 #### Retrieve
+Retrieve a document with id 'ID'. Returns false if not found.
 
 ```javascript
 q.id("ID")
  .run()
   .then(hit => {
-  // return hit object or false if not found
+  // returns hit object or false if not found
   console.log(hit.id())     // get Document ID
   console.log(hit.index())  // get Document index
   console.log(hit.type())   // get Document type
   console.log(hit.data())   // get Document source
+  console.log(hit.source()) // get Document source (alias)
 })
 ```
 
 #### Delete
+Delete document. Cannot be reversed.
 
 ```javascript
 q.id("ID")
@@ -283,6 +287,7 @@ q.id("ID")
 ```
 
 #### Create/Overwrite
+Overwrite the document if 'ID' exists. Create a new document otherwise.
 
 ```javascript
 q.id("ID")
@@ -294,6 +299,7 @@ q.id("ID")
 ```
 
 #### Update
+Update the document if it exists. Will return an error otherwise.
 
 ```javascript
 q.id("ID")
@@ -305,6 +311,7 @@ q.id("ID")
 ```
 
 #### Upsert
+Update the document if it exists. Will create a new document with 'ID' other wise.
 
 ```javascript
 q.id("ID")
@@ -478,17 +485,19 @@ q.must(
   console.log(hit.index()) // get Document index
   console.log(hit.type()) // get Document type
   console.log(hit.data()) // get Document source
+  console.log(hit.source()) // get Document source (alias)
 })
 ```
 
 #### Delete
 
-Delete by query is only avalaible on Elasticsearch 5.X
+Delete by query is only available on Elasticsearch 5.X and over
 
 ```javascript
 q.must(
   // Types
-).delete().then(success => {
+).delete()
+.then(success => {
   // return true
 })
 ```
@@ -500,7 +509,8 @@ Count the documents
 ```javascript
 q.must(
   // Types
-).count().then(count => {
+).count()
+.then(count => {
   // return count of documents
 })
 ```

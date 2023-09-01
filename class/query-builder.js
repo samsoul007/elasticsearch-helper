@@ -6,13 +6,15 @@ function QueryBuilder() {
 
 QueryBuilder.prototype = {
   _add(CB, values) {
-    if (this.arroConditions[CB.getName()]) throw new Error(`you can only have one ${CB.getName()} condition`);
+    // if (this.arroConditions[CB.getName()]) throw new Error(`you can only have one '${CB.getName()}' condition`);
+
+    const currentCB = this.arroConditions[CB.getName()] || CB
 
     Object.keys(values).forEach((key) => {
-      CB.add(values[key]);
+      currentCB.add(values[key]);
     });
 
-    this.arroConditions[CB.getName()] = CB;
+    this.arroConditions[currentCB.getName()] = currentCB;
     return this;
   },
   must(...args) {

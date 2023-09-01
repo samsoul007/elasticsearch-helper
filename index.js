@@ -98,6 +98,7 @@ const indexes = sESClient => Promise.resolve()
   });
 
 let onErrorMethod = err => err;
+let onUpsertData = null
 
 const promiseSerie = (arroPromises) => {
   const p = Promise.resolve();
@@ -107,7 +108,7 @@ const promiseSerie = (arroPromises) => {
   }, p);
 };
 
-const Elasticsearch = function(sIndex, sType) {
+const Elasticsearch = function (sIndex, sType) {
   this.oESClient = false;
 
   this.sIndex = sIndex;
@@ -125,6 +126,7 @@ const Elasticsearch = function(sIndex, sType) {
   this.bHasCondition = false;
   this.arroBulk = [];
   this.onErrorMethod = onErrorMethod;
+  this.onUpsertData = null;
   this.iFrom = false;
 
   this.onPagination = false;
@@ -144,6 +146,13 @@ Elasticsearch.prototype = {
   },
   onError(fFunction) {
     this.onErrorMethod = fFunction;
+    return this;
+  },
+  onUpsert(fFunction) {
+    this.onUpsertData = {
+      func: fFunction,
+      indexes: []
+    };
     return this;
   },
   onPagination(fFuntion, iSize) {
@@ -269,40 +278,43 @@ Elasticsearch.prototype = {
   index() {
 
     return {
-      touch: () =>  {
-        if(!this.sType) return Promise.reject(new Error(`index type missing`))
+      touch: () => {
+        if (!this.sType) return Promise.reject(new Error(`index type missing`))
 
         return this.index().exists(this.sIndex)
-        .then(exists => {
-          if(exists)
-            return Promise.resolve(true)
+          .then(exists => {
+            if (exists)
+              return Promise.resolve(true)
 
-          return this.id("____test_____").body({}).run()
-          .then(() => {
-            return this.id("____test_____").delete()
+            return this.id("____test_____").body({}).run()
+              .then(() => {
+                return this.id("____test_____").delete()
+              })
+              .then(() => true);
           })
-          .then(() => true);
-        })
       },
       delete: () => {
         if (this.sIndex.indexOf('*') !== -1 || this.sIndex.split(',').length > 1) return Promise.reject(new Error('For security reasons you cannot delete multiple indexes'));
 
         return new Promise(((resolve, reject) => {
-          this._getClient().indices.delete({
-            index: this.sIndex,
-          }, (err, response) => {
-            if (err) return reject(err);
+            this._getClient().indices.delete({
+              index: this.sIndex,
+            }, (err, response) => {
+              if (err) return reject(err);
 
-            return resolve(response.acknowledged);
-          });
-        }))
-        .catch(err => Promise.reject(this.onErrorMethod(err)))
+              return resolve(response.acknowledged);
+            });
+          }))
+          .catch(err => Promise.reject(this.onErrorMethod(err)))
       },
       mappings: () => {
         return this._getClient().indices.getMapping({
-          index: this.sIndex,
-        })
-        .catch(err => Promise.reject(this.onErrorMethod(err)))
+            index: this.sIndex,
+          })
+          .then(res => {
+            return _.get(res, `${this.sIndex}.mappings.${this.sIndex}.properties`, {})
+          })
+          .catch(err => Promise.reject(this.onErrorMethod(err)))
       },
       empty: () => {
         this.bEmptyIndex = true;
@@ -310,9 +322,9 @@ Elasticsearch.prototype = {
       },
       exists: () => {
         return this._getClient().indices.exists({
-          index: this.sIndex,
-        })
-        .catch(err => Promise.reject(this.onErrorMethod(err)))
+            index: this.sIndex,
+          })
+          .catch(err => Promise.reject(this.onErrorMethod(err)))
       },
       copyTo: (oQueryObj) => {
         if (this._hasAggregation()) throw new Error('You cannot copy while doing aggregation');
@@ -503,30 +515,51 @@ Elasticsearch.prototype = {
                 reject(err);
               });
             } else {
-              this.oESClient[sType](oQuery, (err, response) => {
-                if (err) {
-                  if (sType === 'get' && err.status === 404) {
-                    return resolve(false);
-                  }
-                  return reject(err);
-                }
-
-                switch (sType) {
-                  case 'search':
-                    if (response.aggregations) {
-                      response.aggregations.pattern = this.oAB;
-                      return resolve(new Response(response));
+              Promise.resolve()
+              .then(() => {
+                //Detect upsert;
+                if(["update", "index"].indexOf(sType) !== -1) {
+                  const data = this.onUpsertData || onUpsertData;
+                  if(data) {
+                    const {func, indexes} = data;
+                    
+                    if(!indexes.length || indexes.indexOf[this.sIndex] !== -1) {
+                      return new Elasticsearch(this.sIndex, this.sType).id(this.sID).run()
+                      .then(oHit => oHit ? oHit.data() : null)
+                      .then(oData => {
+                        func(oData, this.oBody || this.oDoc)
+                      })
                     }
-
-                    return resolve((new Response(response)).results());
-                  case 'get':
-                    return resolve((new Response(response)).result());
-                  case 'count':
-                    return resolve(response.count);
-                  default:
-                    return resolve(this.oBody || this.oDoc || this.bDelete || this.bEmptyIndex);
+                  }
                 }
-              });
+              })
+              .then(() => {
+                return this.oESClient[sType](oQuery, (err, response) => {
+                  if (err) {
+                    if (sType === 'get' && err.status === 404) {
+                      return resolve(false);
+                    }
+                    return reject(err);
+                  }
+  
+                  switch (sType) {
+                    case 'search':
+                      if (response.aggregations) {
+                        response.aggregations.pattern = this.oAB;
+                        return resolve(new Response(response));
+                      }
+  
+                      return resolve((new Response(response)).results());
+                    case 'get':
+                      return resolve((new Response(response)).result());
+                    case 'count':
+                      return resolve(response.count);
+                    default:
+                      return resolve(this.oBody || this.oDoc || this.bDelete || this.bEmptyIndex);
+                  }
+                });
+              })
+              
             }
           }));
         })
@@ -542,6 +575,12 @@ Elasticsearch.prototype = {
 module.exports = {
   onError(fFuntion) {
     onErrorMethod = fFuntion;
+  },
+  onUpsert(fFuntion, indexes) {
+    onUpsertData = {
+      func: fFuntion,
+      indexes: indexes || []
+    };
   },
   AddClient,
   addClient: AddClient,

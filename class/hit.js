@@ -9,6 +9,9 @@ Hit.prototype = {
   data() {
     return this.oHit._source;
   },
+  source() {
+    return this.oHit._source;
+  },
   index() {
     return this.oHit._index;
   },
