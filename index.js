@@ -612,7 +612,7 @@ module.exports = {
             dateAdded: date.toISOString()
           }
         })
-        .run(true)
+        .run()
       },
       indexes: fromIndexes,
       excludedIndexes: [toIndex] //Avoid recursive detection,
