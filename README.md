@@ -119,6 +119,46 @@ ES.query("Index1","Type1")
 })
 ```
 
+## Events
+
+Listeners can be added for specific events. 
+
+### onUpserted
+
+This event will trigger every time a data has updated or created on specific indexes. 
+
+**If the 2nd argument is left empty it will check every index.**
+
+```javascript
+ES.onUpserted((indexName, typeName, documentId) => {
+}, [/*Indexes to listen on*/])
+
+// Query specific event handling
+ES.query("Index1","Type1")
+.onUpserted((indexName, typeName, documentId) => {
+  //This event will NOT overwrite any global event.
+})
+```
+
+### onDocumentChanged
+
+This event will trigger every time a data has an effective change on specific indexes. 
+
+**If the 2nd argument is left empty it will check every index.**
+
+**This event creates 2 queries (1 for before retreiving the document and 1 after the doc is inserted) to check if the document has an actual change**
+
+```javascript
+ES.onDocumentChanged((beforeValue, afterValue) => {
+}, [/*Indexes to listen on*/])
+
+// Query specific event handling
+ES.query("Index1","Type1")
+.onDocumentChanged((beforeValue, afterValue) => {
+  //This event will NOT overwrite any global event.
+})
+```
+
 ## Indexes
 
 **All index operations are under the index() method to avoid conflicts**
@@ -244,6 +284,20 @@ ES.query("Index1","data")
 .use("client2")
 .index()
 .touch();
+```
+
+### storeDocumentHistory
+
+This will automatically store a version of a document into an index. 
+
+**The document body stored is stringified**
+
+```javascript
+//historicalIndexName can be omitted. It will by default store into "historical_data"
+
+//If the first argument is empty, it will store for all Indexes.
+ES.storeDocumentHistory([/*List of indexes to keep historical data*/], historicalIndexName)
+
 ```
 
 ## Documents

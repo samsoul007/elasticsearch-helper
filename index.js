@@ -8,7 +8,8 @@ const QueryBuilder = require('./class/query-builder');
 const AggregationBuilder = require('./class/aggregation-builder');
 const SearchType = require('./class/search-type');
 const AggregationType = require('./class/aggregation-type');
-// var oESClient = false;
+const Utils = require('./class/utils');
+
 const oESClientList = {};
 
 let sDefaultName = 'default';
@@ -99,7 +100,15 @@ const indexes = sESClient => Promise.resolve()
   });
 
 let onErrorMethod = err => err;
-const onUpsertData = []
+const onEvents = {}
+
+const registerEvent = (eventBlock, eventName, eventFunction) => {
+  if (!eventBlock[eventName]) {
+    eventBlock[eventName] = [];
+  }
+
+  eventBlock[eventName].push(eventFunction)
+}
 
 const promiseSerie = (arroPromises) => {
   const p = Promise.resolve();
@@ -108,6 +117,8 @@ const promiseSerie = (arroPromises) => {
     return pacc;
   }, p);
 };
+
+
 
 const Elasticsearch = function (sIndex, sType) {
   this.oESClient = false;
@@ -127,7 +138,9 @@ const Elasticsearch = function (sIndex, sType) {
   this.bHasCondition = false;
   this.arroBulk = [];
   this.onErrorMethod = onErrorMethod;
-  this.onUpsertData = null;
+
+  this.onEvents = {};
+
   this.iFrom = false;
 
   this.onPagination = false;
@@ -149,18 +162,39 @@ Elasticsearch.prototype = {
     this.onErrorMethod = fFunction;
     return this;
   },
-  onUpsert(fFunction) {
-    this.onUpsertData = {
+  onUpserted(fFunction) {
+    registerEvent(this.onEvents, "onUpserted", {
       func: fFunction,
       indexes: [],
       excludedIndexes: []
-    };
+    })
+
+    return this;
+  },
+  onDocumentChanged(fFunction) {
+    registerEvent(this.onEvents, "onDocumentChanged", {
+      func: fFunction,
+      indexes: [],
+      excludedIndexes: []
+    })
+
     return this;
   },
   onPagination(fFuntion, iSize) {
     this.onPagination = fFuntion;
     this.iPageSize = iSize || this.iPageSize;
     return this;
+  },
+  _retrieveEventHandlers(eventName, index) {
+    const data = [].concat(_.get(this.onEvents, eventName, []), _.get(onEvents, eventName, []))
+
+    return data.filter(d => {
+      const {
+        indexes = [], excludedIndexes = []
+      } = d;
+
+      return indexes.includes(index) && !excludedIndexes.includes(index);
+    })
   },
   _hasAggregation() {
     return !!this.oAB.count();
@@ -518,59 +552,78 @@ Elasticsearch.prototype = {
               });
             } else {
               Promise.resolve()
-              .then(() => {
-                //Detect upsert;
-                if(["update", "index"].indexOf(sType) !== -1) {
-                  const data = this.onUpsertData || onUpsertData || [] ;
-
-                  data.forEach(d => {
-                    const {func, indexes, excludedIndexes} = d;
-
-                    if((!indexes.length || indexes.indexOf(this.sIndex) !== -1) && excludedIndexes.indexOf(this.sIndex) === -1) {
+                .then(() => {
+                  //Detect upsert;
+                  if (["update", "index"].indexOf(sType) !== -1) {
+                    const eventHandlers = this._retrieveEventHandlers("onDocumentChanged", this.sIndex);
+                    //Retrieve current stored value if there is upserting to be done
+                    if (eventHandlers.length) {
                       return new Elasticsearch(this.sIndex, this.sType).id(this.sID).run()
-                      .then(oHit => oHit ? oHit : null)
-                      .then(oldHit => {
-                        if(oldHit && JSON.stringify(oldHit.data()) !== JSON.stringify(this.oBody || this.oDoc)) {
-                          const oCurrentHit = new Hit({
-                            _id: this.sID,
-                            _type: this.sType,
-                            _index: this.sIndex,
-                            _source:  this.oBody || this.oDoc
-                          })
-                          func(oldHit, oCurrentHit)
-                        }
-                      })
+                        .then(oHit => oHit ? oHit : null)
                     }
-                  })
-                }
-              })
-              .then(() => {
-                return this.oESClient[sType](oQuery, (err, response) => {
-                  if (err) {
-                    if (sType === 'get' && err.status === 404) {
-                      return resolve(false);
-                    }
-                    return reject(err);
+
+                    return null
                   }
-  
-                  switch (sType) {
-                    case 'search':
-                      if (response.aggregations) {
-                        response.aggregations.pattern = this.oAB;
-                        return resolve(new Response(response));
+                })
+                .then(oldValue => {
+                  return this.oESClient[sType](oQuery, (err, response) => {
+                    if (err) {
+                      if (sType === 'get' && err.status === 404) {
+                        return resolve(false);
                       }
-  
-                      return resolve((new Response(response)).results());
-                    case 'get':
-                      return resolve((new Response(response)).result());
-                    case 'count':
-                      return resolve(response.count);
-                    default:
-                      return resolve(this.oBody || this.oDoc || this.bDelete || this.bEmptyIndex);
-                  }
-                });
-              })
-              
+                      return reject(err);
+                    }
+
+                    switch (sType) {
+                      case "update":
+                      case "index":
+
+                        //onDocumentChanged
+                        (() => {
+                          let eventHandlers = this._retrieveEventHandlers("onDocumentChanged", this.sIndex)
+                          if (eventHandlers.length) {
+                            Promise.resolve(oldValue)
+                              .then(oldHit => {
+                                return new Elasticsearch(this.sIndex, this.sType).id(this.sID).run()
+                                  .then(oHit => oHit ? oHit : null)
+                                  .then(newHit => {
+                                    if (oldHit && Utils.md5(JSON.stringify(oldHit.data())) !== Utils.md5(JSON.stringify(newHit.data()))) {
+                                      eventHandlers.forEach(eventHandler => eventHandler.func(oldHit, newHit))
+                                    }
+                                  })
+                              })
+                          }
+                        })();
+
+
+                        //onUpsertedData
+                        (() => {
+                          let eventHandlers = this._retrieveEventHandlers("onUpserted", this.sIndex)
+                          if (eventHandlers.length) {
+                            eventHandlers.forEach(eventHandler => eventHandler.func(this.sIndex, this.sType, this.sID))
+                          }
+                        })();
+
+
+                        return resolve(this.oBody || this.oDoc || this.bDelete || this.bEmptyIndex);
+
+                      case 'search':
+                        if (response.aggregations) {
+                          response.aggregations.pattern = this.oAB;
+                          return resolve(new Response(response));
+                        }
+
+                        return resolve((new Response(response)).results());
+                      case 'get':
+                        return resolve((new Response(response)).result());
+                      case 'count':
+                        return resolve(response.count);
+                      default:
+                        return resolve(this.oBody || this.oDoc || this.bDelete || this.bEmptyIndex);
+                    }
+                  });
+                })
+
             }
           }));
         })
@@ -587,32 +640,41 @@ module.exports = {
   onError(fFuntion) {
     onErrorMethod = fFuntion;
   },
-  onUpsert(func, indexes = [], excludedIndexes = []) {
-    onUpsertData.push({
+  onUpserted(func, indexes = [], excludedIndexes = []) {
+    registerEvent(onEvents, "onUpserted", {
       func,
       indexes,
       excludedIndexes
-    });
+    })
+  },
+  onDocumentChanged(func, indexes = [], excludedIndexes = []) {
+    registerEvent(onEvents, "onDocumentChanged", {
+      func,
+      indexes,
+      excludedIndexes
+    })
   },
   storeDocumentHistory(fromIndexes = [], toIndex) {
     toIndex = toIndex || "historical_data"
 
-    onUpsertData.push({
+    registerEvent(onEvents, "onDocumentChanged", {
       func(before, after) {
+        console.log(before, after)
+
         const date = new Date()
 
         new Elasticsearch(toIndex, "data")
-        .id(`${after.index()}_${after.type()}_${after.id()}_${date.getTime()}`)
-        .body({
-          index: after.index(),
-          id: after.id(),
-          type: after.type(),
-          data: JSON.stringify(after.data()),
-          metadata: {
-            dateAdded: date.toISOString()
-          }
-        })
-        .run()
+          .id(`${after.index()}_${after.type()}_${after.id()}_${date.getTime()}`)
+          .body({
+            index: after.index(),
+            id: after.id(),
+            type: after.type(),
+            data: JSON.stringify(after.data()),
+            metadata: {
+              dateAdded: date.toISOString()
+            }
+          })
+          .run()
       },
       indexes: fromIndexes,
       excludedIndexes: [toIndex] //Avoid recursive detection,
