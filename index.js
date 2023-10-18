@@ -659,8 +659,6 @@ module.exports = {
 
     registerEvent(onEvents, "onDocumentChanged", {
       func(before, after) {
-        console.log(before, after)
-
         const date = new Date()
 
         new Elasticsearch(toIndex, "data")
