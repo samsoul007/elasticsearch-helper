@@ -104,13 +104,19 @@ AggregationType.prototype = {
 
     return this;
   },
-  date_histogram(sKey, sInterval) {
+  date_histogram(sKey, sInterval, oOptions) {
     this.sType = 'date_histogram';
 
     this.oOptions = {
       field: sKey,
       interval: sInterval,
     };
+
+    if (oOptions) {
+      Object.keys(oOptions).forEach((attrname) => {
+        this.oOptions[attrname] = oOptions[attrname];
+      });
+    }
 
     return this;
   },
