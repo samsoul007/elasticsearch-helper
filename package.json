@@ -23,12 +23,15 @@
   },
   "homepage": "https://github.com/samsoul007/elasticsearch-helper#readme",
   "dependencies": {
+    "@elastic/elasticsearch": "^8.14.0",
+    "debug": "^4.3.5",
     "elasticsearch": "^13.3.1",
     "elasticsearch-scroll-stream": "^1.2.1",
     "lodash": "^4.17.15",
     "moment": "^2.24.0"
   },
   "devDependencies": {
+    "async": "^3.2.5",
     "eslint": "^5.16.0",
     "eslint-config-airbnb": "^17.1.1",
     "eslint-config-airbnb-base": "^13.2.0",
