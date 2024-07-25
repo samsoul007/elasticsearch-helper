@@ -302,7 +302,7 @@ Elasticsearch.prototype = {
                     }
                 } else if (this.bUpdateByQuery) {
                     sType = 'updateByQuery';
-                    
+
                     oQuery.body = {
                         query: this.oQB.render(),
                     };
@@ -319,13 +319,14 @@ Elasticsearch.prototype = {
                     sType = 'deleteByQuery';
                 } else if (this.oDoc) {
                     if (!this.sID) return reject(new Error('You need to set an id to update'));
-                    if (this.upsert) oQuery.body.doc_as_upsert = true;
-
                     sType = 'update';
                     oQuery.body = {
                         doc: this.oDoc,
                     };
-
+                    
+                    if (this.bUpsert) {
+                        oQuery.body.doc_as_upsert = true;
+                    }
                 } else if (this.bCount) {
                     oQuery.body = {
                         query: this.oQB.render(),
