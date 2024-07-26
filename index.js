@@ -10,6 +10,7 @@ const AggregationBuilder = require('./class/aggregation-builder');
 const SearchType = require('./class/search-type');
 const AggregationType = require('./class/aggregation-type');
 const Utils = require('./class/utils');
+const { bulkOperation } = require('./class/bulkOperation');
 
 const oESClientList = {};
 
@@ -41,6 +42,10 @@ const AddClient = async (...args) => {
         ([hostName, hostAddress] = args);
 
         if (args[2] && args[2] === true) sDefaultName = hostName;
+    }
+
+    if (hostAddress.indexOf("http") === -1) {
+        hostAddress = `http://${hostAddress}`
     }
 
     oESClientList[hostName] = new ES.Client({
@@ -279,7 +284,7 @@ Elasticsearch.prototype = {
                     return reject(new Error('You cannot use id() with bulk()'));
                 }
 
-                oQuery.body = this.arroBulk;
+                oQuery.body = {};
                 sType = 'bulk';
             } else {
                 if (this.sID) {
@@ -323,7 +328,7 @@ Elasticsearch.prototype = {
                     oQuery.body = {
                         doc: this.oDoc,
                     };
-                    
+
                     if (this.bUpsert) {
                         oQuery.body.doc_as_upsert = true;
                     }
@@ -467,19 +472,9 @@ Elasticsearch.prototype = {
     copyTo(...args) {
         return this.index().copyTo(...args);
     },
-    bulk(oData, sId, sType) {
-        if (!this.sType && !sType) throw new Error('You need to set a type when you create a query or when you call the bulk() method to copy');
+    bulk(...args) {
 
-        if (!this.sID && !sId) throw new Error('You need to set an id either when you define a query with id() or when calling the bulk() method');
-
-        this.arroBulk.push({
-            index: {
-                _index: this.sIndex,
-                _type: this.sType || sType,
-                _id: this.sID || sId,
-            },
-        });
-        this.arroBulk.push(oData);
+        this.arroBulk = args
         return this;
     },
     log() {
@@ -559,33 +554,34 @@ Elasticsearch.prototype = {
                 if (bLog) console.log(JSON.stringify(oQueryData, null, 2)); // eslint-disable-line no-console
 
 
-                const oQuery = oQueryData.query;
+                let oQuery = oQueryData.query;
                 const sType = oQueryData.type;
 
                 //On newer version of ES the type doesn t exists anymore. It is to make it backward compatible
                 if (this.oESClient.type === "new")
                     delete oQuery.type;
 
-                debug(`query:request:${oQuery.index}:${sType}`)(`Query on ${this.oESClient.host}`, JSON.stringify(oQuery, null, 2));
-
 
                 if (sType === 'bulk') {
-                    const arroDataBulk = _.chunk(this.arroBulk, 500);
 
-                    const arroPromises = [];
-                    for (let i = 0; i < arroDataBulk.length; i += 1) {
-                        arroPromises.push((arroBulk => () => new Promise(((resolve, reject) => {
-                            this.oESClient.bulk({
-                                body: arroBulk,
-                            }, (err) => {
-                                if (err) return reject(err);
+                    let bulks = [];
 
-                                return resolve(true);
-                            });
-                        })))(arroDataBulk[i]));
+                    this.arroBulk.forEach(bulkOperation => {
+                        if (bulkOperation._render) {
+                            bulks = bulks.concat(bulkOperation._render())
+                        }
+                    })
+
+                    debug(`query:request:${oQuery.index}:${sType}`)(`Query on ${this.oESClient.host}`, JSON.stringify(bulks, null, 2));
+
+                    oQuery = {
+                        index: oQuery.index,
+                        body: bulks
                     }
-                    return promiseSerie(arroPromises);
                 }
+
+                debug(`query:request:${oQuery.index}:${sType}`)(`Query on ${this.oESClient.host}`, JSON.stringify(oQuery, null, 2));
+
 
                 return new Promise(((resolve, reject) => {
                     // if size is more than 5000 we do an automatic scroll
@@ -623,6 +619,10 @@ Elasticsearch.prototype = {
                                         // console.log(sType, oQueryData.query.index, response)
 
                                         switch (sType) {
+                                            case "bulk":
+                                                console.log(JSON.stringify(response, null, 2))
+                                                return resolve(true)
+
                                             case "update":
                                             case "index":
 
@@ -666,7 +666,7 @@ Elasticsearch.prototype = {
                                                 return resolve((new Response(response)).results());
                                             case 'get':
                                                 return resolve((new Response(response)).result());
-                                            case 'updateByQuery': 
+                                            case 'updateByQuery':
                                                 return resolve(response.updated);
                                             case 'count':
                                                 return resolve(response.count);
@@ -769,6 +769,13 @@ module.exports = {
     },
     addFilter() {
         return new QueryBuilder();
+    },
+    bulkOperation(operation, id, data) {
+        const BO = new bulkOperation(id);
+        BO.operation(operation)
+        BO.data(data)
+
+        return BO;
     },
     filter: {
         should(...args) {

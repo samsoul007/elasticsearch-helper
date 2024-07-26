@@ -70,6 +70,9 @@ ES.addClient("client1","127.0.0.1:9200",true);
 ES.AddClient(...)
 ```
 
+**NOTE: If host is added without http or https it will assume it is http**
+
+
 ## Global functions
 
 ```javascript
@@ -90,11 +93,11 @@ ES.query("Index1");
 // Querying on all indexes starting with "Index"
 ES.query("Index*");
 
-// Querying on index "Index1" and type "Type1"
-ES.query("Index1","Type1");
+// Querying on index "Index1"
+ES.query("Index1");
 
-// Querying on index "Index1" and type "Type1" using the client "Client1"
-ES.query("Index1","Type1)".use("Client1")
+// Querying on index "Index1" using the client "Client1"
+ES.query("Index1").use("Client1")
 ```
 
 ## Error handling
@@ -111,7 +114,7 @@ ES.onError(err => {
 })
 
 // Query specific error handling
-ES.query("Index1","Type1")
+ES.query("Index1")
 .onError(err => {
   //This onError will overwrite the global onError method for this query.
   console.log("This message will appear after this query has an error")
@@ -134,7 +137,7 @@ ES.onUpserted((indexName, typeName, documentId) => {
 }, [/*Indexes to listen on*/])
 
 // Query specific event handling
-ES.query("Index1","Type1")
+ES.query("Index1")
 .onUpserted((indexName, typeName, documentId) => {
   //This event will NOT overwrite any global event.
 })
@@ -153,7 +156,7 @@ ES.onDocumentChanged((beforeValue, afterValue) => {
 }, [/*Indexes to listen on*/])
 
 // Query specific event handling
-ES.query("Index1","Type1")
+ES.query("Index1")
 .onDocumentChanged((beforeValue, afterValue) => {
   //This event will NOT overwrite any global event.
 })
@@ -205,14 +208,14 @@ ES.query("Index1")
 .copyTo(ES.query("Index2").use("client2"));
 
 //Copy from index1, type1 to index2, type1
-ES.query("Index1","Type1")
+ES.query("Index1")
 .index()
 .copyTo(ES.query("Index2"));
 
 //Copy from index1, type1 to index2, type2
-ES.query("Index1","Type1")
+ES.query("Index1")
 .index()
-.copyTo(ES.query("Index2","Type2"));
+.copyTo(ES.query("Index2"));
 
 //Copy documents with first name is Josh from index1 to index2
 ES.query("Index1")
@@ -224,7 +227,7 @@ ES.query("Index1")
 
 //Backward compatibility
 ES.query("Index1")
-.copyTo(ES.query("Index2","Type2"));
+.copyTo(ES.query("Index2"));
 ```
 
 ### delete
@@ -276,11 +279,11 @@ ES.query("Index1")
 Create an empty index without any mappings
 
 ```javascript
-ES.query("Index1","data")
+ES.query("Index1")
 .index()
 .touch();
 
-ES.query("Index1","data")
+ES.query("Index1")
 .use("client2")
 .index()
 .touch();
@@ -308,7 +311,7 @@ For those example we will use the query variable 'q':
 
 ```javascript
 // initialise query
-const q = ES.query("Index1","Type1");
+const q = ES.query("Index1");
 ```
 
 ### Single Document
@@ -569,11 +572,49 @@ q.must(
 })
 ```
 
+#### Update by Query
+
+Create query that will modify documents with the same logic. If you need different values per document please refer to `Bulk`
+
+**NOTE: This is an advanced feature that can modify many documents at the same time. Make sure your query is selecting the right documents before executing it.**
+
+```javascript
+q.must(
+  // Types
+)
+.updateByQuery("ctx._source.someProperty=\"propertyvalue\"")
+.run()
+.then(numberOfDocsUpdated => {
+  //Returns the number of documents updated
+})
+```
+
+#### Bulk
+
+You can do bulk processes across documents using the bulkOperation method
+
+bulkOperation operation can be one of those: `index`, `update`, `delete`, `create`
+
+```javascript
+q.bulk(
+  ES.bulkOperation("update", "documentId1", {
+    property1: "property1Value"
+  }),
+  ES.bulkOperation("update", "documentId2", {
+    property2: "property2Value"
+  }),
+  ES.bulkOperation("delete", "documentId3"),
+  ES.bulkOperation(operation, documentId, [data]),
+)
+.then(response => {
+  // returns a direct elasticsearch response containing all operations.
+  // This function does not reject on operation error.
+})
+```
+
 #### aggregations [BETA]
 
 Elasticsearch has a very powerful aggregation system but the way to handle it can be tricky. I tried to solve this issue by wrapping it in what I think is the simplest way.
-
-NOTE: Right now I only handle 2 types of aggregation, `terms` and `date_histogram`, others will be added over time.
 
 ```javascript
 q.aggs(
@@ -690,13 +731,6 @@ q.from(10)
 
 ```javascript
 q.fields(["name","id"])
-```
-
--   type
-
-```javascript
-// will change/retrieve the type
-q.type("type1")
 ```
 
 -   sorting
