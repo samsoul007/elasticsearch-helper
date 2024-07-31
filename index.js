@@ -53,11 +53,9 @@ const AddClient = async (...args) => {
         // log: 'trace'
     });
 
-    oESClientList[hostName].type = "new"
-
-
     try {
         await oESClientList[hostName].info()
+        oESClientList[hostName].type = "new"
     } catch (err) {
         if (err.message === "The client noticed that the server is not Elasticsearch and we do not support this unknown product.") {
             debug(`registering`)("The elasticsearch host you are trying to reach is not version 8+, falling back into the old client.")
@@ -548,6 +546,12 @@ Elasticsearch.prototype = {
         if (!this.oESClient) {
             throw new Error('need to setup the elasticsearch client');
         }
+
+        if (!this.oESClient.type) {
+            throw new Error('elasticsearch client not initialised. Did you addClient() as a Promise?');
+        }
+
+        console.log(this.oESClient)
 
         return this._generateQuery()
             .then(oQueryData => {
