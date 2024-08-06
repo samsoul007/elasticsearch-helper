@@ -548,8 +548,6 @@ Elasticsearch.prototype = {
             throw new Error('elasticsearch client not initialised. Did you addClient() as a Promise?');
         }
 
-        console.log(this.oESClient)
-
         return this._generateQuery()
             .then(oQueryData => {
                 if (bLog) console.log(JSON.stringify(oQueryData, null, 2)); // eslint-disable-line no-console
@@ -621,7 +619,6 @@ Elasticsearch.prototype = {
 
                                         switch (sType) {
                                             case "bulk":
-                                                console.log(JSON.stringify(response, null, 2))
                                                 return resolve(true)
 
                                             case "update":
