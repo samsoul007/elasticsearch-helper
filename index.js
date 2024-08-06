@@ -135,15 +135,7 @@ const registerEvent = (eventBlock, eventName, eventFunction) => {
     eventBlock[eventName].push(eventFunction)
 }
 
-const promiseSerie = (arroPromises) => {
-    const p = Promise.resolve();
-    return arroPromises.reduce((pacc, fn) => {
-        pacc = pacc.then(fn); // eslint-disable-line no-param-reassign
-        return pacc;
-    }, p);
-};
-
-async function scrollSearch(client, index, query, scrollDuration = '1m') {
+async function scrollSearch(client, index, query, scrollDuration = '1m', scrollSize = 1000) {
     const allDocuments = [];
 
     delete query.size;
@@ -166,6 +158,7 @@ async function scrollSearch(client, index, query, scrollDuration = '1m') {
         index,
         scroll: scrollDuration,
         body: query,
+        size: scrollSize,
     })
         .then((initialResponse) => {
             debug("scroll")(`Started scroll search on ${index} | scroll_id: ${initialResponse._scroll_id}`)
@@ -492,6 +485,10 @@ Elasticsearch.prototype = {
         this.sizeResult = iSize;
         return this;
     },
+    scrollSize(iScrollSize) {
+        this.iScrollSize = iScrollSize;
+        return this;
+    },
     from(iIndex) {
         this.iFrom = iIndex;
         return this;
@@ -590,7 +587,7 @@ Elasticsearch.prototype = {
                 return new Promise(((resolve, reject) => {
                     // if size is more than 5000 we do an automatic scroll
                     if (sType === 'search' && oQuery.body.size && oQuery.body.size > 10000 && !this.oAB.count()) {
-                        scrollSearch(this.oESClient, oQuery.index, oQuery.body)
+                        scrollSearch(this.oESClient, oQuery.index, oQuery.body, this.iScrollSize)
                             .then(docs => {
                                 return {
                                     hits: {
