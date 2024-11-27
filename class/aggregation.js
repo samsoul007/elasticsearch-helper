@@ -3,12 +3,17 @@ const Hit = require('./hit');
 
 function Aggregation(oAggregation, oPattern) {
   this.oAggregation = oAggregation;
-  this.oPattern = oPattern;
+  this.oPattern = oPattern || { getType() { return "group" } };
 }
 
 Aggregation.prototype = {
   values() {
     switch (this.oPattern.getType()) {
+      case 'group':
+        return this.oAggregation.buckets.map(value => new Hit({
+          _id: value.key,
+          _source: value.doc.hits.hits[0]._source,
+        }));
       case 'terms':
         return this.oAggregation.buckets.map(value => new Hit({
           _id: value.key,

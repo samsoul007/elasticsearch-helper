@@ -88,7 +88,38 @@ AggregationType.prototype = {
 
     return this;
   },
+  groupByLatest(sKey, sortByField, oOptions) {
+    this.sType = 'group';
 
+    this.oOptions = {
+      terms: {
+        field: sKey,
+        size: 10000
+      },
+      aggs: {
+        doc: {
+          top_hits: {
+            size: 1,
+            sort: [
+              {
+                [sortByField]: {
+                  "order": "desc"
+                }
+              }
+            ]
+          }
+        }
+      }
+    };
+
+    if (oOptions) {
+      Object.keys(oOptions).forEach((attrname) => {
+        this.oOptions[attrname] = oOptions[attrname];
+      });
+    }
+
+    return this;
+  },
   terms(sKey, oOptions) {
     this.sType = 'terms';
 
@@ -129,6 +160,7 @@ AggregationType.prototype = {
     return this;
   },
   render() {
+
     const oObj = {
       [this.sType]: this.oOptions,
     };

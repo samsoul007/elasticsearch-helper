@@ -886,5 +886,11 @@ module.exports = {
                 return oST.date_histogram(...args);
             };
         },
+        groupByLatest(sName) {
+            return (...args) => {
+                const oST = new AggregationType(sName);
+                return oST.groupByLatest(...args);
+            };
+        },
     },
 };

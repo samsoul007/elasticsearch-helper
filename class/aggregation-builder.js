@@ -24,9 +24,13 @@ AggregationBuilder.prototype = {
   },
   render() {
     const self = this;
-    const oReturn = {};
+    let oReturn = {};
     Object.keys(self.oAggregations).forEach((key) => {
-      oReturn[key] = self.oAggregations[key].render();
+      if (self.oAggregations[key].getType() === "group") {
+        oReturn = Object.assign({}, oReturn, self.oAggregations[key].render())
+      } else {
+        oReturn[key] = self.oAggregations[key].render();
+      }
     });
 
     return oReturn;
