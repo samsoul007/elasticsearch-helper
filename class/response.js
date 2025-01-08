@@ -21,7 +21,7 @@ Response.prototype = {
     return Promise.resolve()
       .then(() => {
         const arroHits = this.oResponse.hits.hits.map(o => new Hit(o));
-        arroHits.total = this.oResponse.hits.total;
+        arroHits.total = this.oResponse.hits.total.value || this.oResponse.hits.total;
         return arroHits;
       });
   },
