@@ -9,7 +9,7 @@ Response.prototype = {
   count() {
     if (!this.oResponse.hits) return Promise.resolve(this.oResponse.found ? 1 : 0);
 
-    return Promise.resolve(this.oResponse.hits.total);
+    return Promise.resolve(this.oResponse.hits.total.value || this.oResponse.hits.total);
   },
   result() {
     if (this.oResponse.found) {
