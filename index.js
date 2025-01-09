@@ -338,6 +338,7 @@ Elasticsearch.prototype = {
                         query: this.oQB.render(),
                     };
 
+                    oQuery.track_total_hits = true;
                     oQuery.body.size = this.sizeResult || 10;
 
                     if (this.iFrom) oQuery.body.from = this.iFrom;
