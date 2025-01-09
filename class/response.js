@@ -21,7 +21,12 @@ Response.prototype = {
     return Promise.resolve()
       .then(() => {
         const arroHits = this.oResponse.hits.hits.map(o => new Hit(o));
-        arroHits.total = this.oResponse.hits.total.value || this.oResponse.hits.total;
+
+        if (this.oResponse.hits.total.value !== undefined)
+          arroHits.total = this.oResponse.hits.total.value;
+        else
+          arroHits.total = this.oResponse.hits.total;
+
         return arroHits;
       });
   },
