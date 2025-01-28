@@ -140,7 +140,7 @@ AggregationType.prototype = {
 
     this.oOptions = {
       field: sKey,
-      fixed_interval: sInterval,
+      calendar_interval: sInterval,
     };
 
     if (oOptions) {
