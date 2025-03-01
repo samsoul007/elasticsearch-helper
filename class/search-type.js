@@ -60,6 +60,16 @@ SearchType.prototype = {
     });
     return this;
   },
+  geoPolygon(sKey, coordinates = []) {
+    this._setValues('geo_polygon', sKey, {
+      coordinates
+    });
+    return this;
+  },
+  geoShape(sKey, data = {}) {
+    this._setValues('geo_shape', sKey, data);
+    return this;
+  },
   render() {
     const oObj = {};
 
@@ -80,6 +90,21 @@ SearchType.prototype = {
           oObj[this.sType].distance_type = this.uValue.type;
         }
         break;
+
+      case 'geo_polygon':
+        oObj[this.sType] = {
+          [this.sKey]: {
+            "points": this.uValue.coordinates
+          },
+        };
+        break;
+
+      case 'geo_shape':
+        oObj[this.sType] = {
+          [this.sKey]: this.uValue.data,
+        };
+        break;
+
       case 'nested':
         oObj[this.sType] = {
           path: this.sKey,
