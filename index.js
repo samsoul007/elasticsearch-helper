@@ -831,6 +831,14 @@ module.exports = {
             const oST = new SearchType();
             return oST.geo(...args);
         },
+        geoPolygon(...args) {
+            const oST = new SearchType();
+            return oST.geoPolygon(...args);
+        },
+        geoShape(...args) {
+            const oST = new SearchType();
+            return oST.geoShape(...args);
+        },
     },
     agg: {
         average(sName) {
